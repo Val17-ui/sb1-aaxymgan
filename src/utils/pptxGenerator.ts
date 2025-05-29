@@ -7,7 +7,9 @@ interface Question {
   imagePath?: string;
   duration?: number;
 }
+
 const defaultPresPropsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentationPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"/>`;
+
 const defaultViewPropsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:viewPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
   <p:normalViewPr/>
@@ -15,7 +17,8 @@ const defaultViewPropsXml = `<?xml version="1.0" encoding="UTF-8" standalone="ye
   <p:notesTextViewPr/>
 </p:viewPr>`;
 
-const baseContentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+const createContentTypes = (questionCount: number) => {
+  let contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="xml" ContentType="application/xml"/>
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
@@ -30,8 +33,25 @@ const baseContentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?
   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
   <Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/>
   <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
-  <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+  <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>`;
+
+  // Add types for each slide
+  for (let i = 1; i <= questionCount; i++) {
+    contentTypes += `
+  <Override PartName="/ppt/slides/slide${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`;
+  }
+
+  // Add types for all tags (1 presentation + 4 per question)
+  const totalTags = 1 + (questionCount * 4);
+  for (let i = 1; i <= totalTags; i++) {
+    contentTypes += `
+  <Override PartName="/ppt/tags/tag${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tags+xml"/>`;
+  }
+
+  contentTypes += `
 </Types>`;
+  return contentTypes;
+};
 
 const baseRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -40,84 +60,11 @@ const baseRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
 </Relationships>`;
 
-const baseSlide = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" 
-       xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" 
-       xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-  <p:cSld>
-    <p:spTree>
-      <p:nvGrpSpPr>
-        <p:cNvPr id="1" name=""/>
-        <p:cNvGrpSpPr/>
-        <p:nvPr/>
-      </p:nvGrpSpPr>
-      <p:grpSpPr/>
-      <p:sp>
-        <p:nvSpPr>
-          <p:cNvPr id="2" name="Title Placeholder"/>
-          <p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>
-          <p:nvPr><p:ph type="title"/></p:nvPr>
-        </p:nvSpPr>
-        <p:spPr/>
-        <p:txBody>
-          <a:bodyPr/>
-          <a:lstStyle/>
-          <a:p><a:r><a:rPr lang="en-US"/><a:t>Question Title</a:t></a:r></a:p>
-        </p:txBody>
-        <p:custDataLst><p:tags r:id="rId2"/></p:custDataLst>
-      </p:sp>
-      <p:sp>
-        <p:nvSpPr>
-          <p:cNvPr id="3" name="Answers Placeholder"/>
-          <p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>
-          <p:nvPr><p:ph type="body" idx="1"/></p:nvPr>
-        </p:nvSpPr>
-        <p:spPr/>
-        <p:txBody>
-          <a:bodyPr/>
-          <a:lstStyle/>
-          <a:p><a:r><a:rPr lang="en-US"/><a:t>Answers</a:t></a:r></a:p>
-        </p:txBody>
-        <p:custDataLst><p:tags r:id="rId3"/></p:custDataLst>
-      </p:sp>
-      <p:sp>
-        <p:nvSpPr>
-          <p:cNvPr id="4" name="Countdown Timer"/>
-          <p:cNvSpPr/>
-          <p:nvPr/>
-        </p:nvSpPr>
-        <p:spPr/>
-        <p:txBody>
-          <a:bodyPr/>
-          <a:lstStyle/>
-          <a:p><a:r><a:rPr lang="en-US"/><a:t>00:30</a:t></a:r></a:p>
-        </p:txBody>
-        <p:custDataLst><p:tags r:id="rId4"/></p:custDataLst>
-      </p:sp>
-    </p:spTree>
-  </p:cSld>
-  <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
-  <p:custDataLst><p:tags r:id="rId1"/></p:custDataLst>
-</p:sld>`;
-
 const baseAppProps = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
   <Application>OMBEA PowerPoint Generator</Application>
   <AppVersion>16.0000</AppVersion>
 </Properties>`;
-const baseCoreProps = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" 
-                   xmlns:dc="http://purl.org/dc/elements/1.1/" 
-                   xmlns:dcterms="http://purl.org/dc/terms/" 
-                   xmlns:dcmitype="http://purl.org/dc/dcmitype/" 
-                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <dc:title>OMBEA Interactive Presentation</dc:title>
-  <dc:creator>OMBEA PowerPoint Generator</dc:creator>
-  <cp:lastModifiedBy>OMBEA PowerPoint Generator</cp:lastModifiedBy>
-  <cp:revision>1</cp:revision>
-  <dcterms:created xsi:type="dcterms:W3CDTF">\${new Date().toISOString()}</dcterms:created>
-  <dcterms:modified xsi:type="dcterms:W3CDTF">\${new Date().toISOString()}</dcterms:modified>
-</cp:coreProperties>`;
 
 const defaultThemeXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Thème Office">
@@ -401,11 +348,13 @@ const defaultThemeXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </a:themeElements>
 <a:objectDefaults/>
 <a:extraClrSchemeLst/>
-</a:theme>\`;
+</a:theme>`;
+
 const defaultSlideMasterRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
 </Relationships>`;
+
 const defaultSlideMasterXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
   <p:cSld>
@@ -467,18 +416,185 @@ const defaultSlideLayoutXml = `<?xml version="1.0" encoding="UTF-8" standalone="
   <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
 </p:sldLayout>`;
 
-const createSlideRelsXml = (slideNumber: number) => {
-  const baseTagIndex = (slideNumber - 1) * 4;
+const defaultTableStylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}">
+  <a:tblStyle styleId="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}" styleName="Medium Style 2 - Accent 1">
+    <a:wholeTbl>
+      <a:tcTxStyle>
+        <a:fontRef idx="minor">
+          <a:schemeClr val="lt1"/>
+        </a:fontRef>
+        <a:schemeClr val="dk1"/>
+      </a:tcTxStyle>
+      <a:tcStyle>
+        <a:tcBdr>
+          <a:left>
+            <a:ln w="12700">
+              <a:solidFill>
+                <a:schemeClr val="accent1"/>
+              </a:solidFill>
+            </a:ln>
+          </a:left>
+          <a:right>
+            <a:ln w="12700">
+              <a:solidFill>
+                <a:schemeClr val="accent1"/>
+              </a:solidFill>
+            </a:ln>
+          </a:right>
+          <a:top>
+            <a:ln w="12700">
+              <a:solidFill>
+                <a:schemeClr val="accent1"/>
+              </a:solidFill>
+            </a:ln>
+          </a:top>
+          <a:bottom>
+            <a:ln w="12700">
+              <a:solidFill>
+                <a:schemeClr val="accent1"/>
+              </a:solidFill>
+            </a:ln>
+          </a:bottom>
+        </a:tcBdr>
+        <a:fill>
+          <a:solidFill>
+            <a:schemeClr val="lt1"/>
+          </a:solidFill>
+        </a:fill>
+      </a:tcStyle>
+    </a:wholeTbl>
+  </a:tblStyle>
+</a:tblStyleLst>`;
+
+// FIXED: Core Properties with correct template literal
+const createCoreProps = () => {
+  const now = new Date().toISOString();
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag\${baseTagIndex + 2}.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag\${baseTagIndex + 3}.xml"/>
-  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag\${baseTagIndex + 4}.xml"/>
-  <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag\${baseTagIndex + 5}.xml"/>
-  <Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
-</Relationships>`;
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" 
+                   xmlns:dc="http://purl.org/dc/elements/1.1/" 
+                   xmlns:dcterms="http://purl.org/dc/terms/" 
+                   xmlns:dcmitype="http://purl.org/dc/dcmitype/" 
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <dc:title>OMBEA Interactive Presentation</dc:title>
+  <dc:creator>OMBEA PowerPoint Generator</dc:creator>
+  <cp:lastModifiedBy>OMBEA PowerPoint Generator</cp:lastModifiedBy>
+  <cp:revision>1</cp:revision>
+  <dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created>
+  <dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>
+</cp:coreProperties>`;
 };
 
+// FIXED: All interpolations corrected
+const createSlideXml = (question: string, duration: number) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" 
+       xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" 
+       xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="Title Placeholder"/>
+          <p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>
+          <p:nvPr><p:ph type="title"/></p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="685800" y="914400"/>
+            <a:ext cx="10820400" cy="1371600"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:r>
+              <a:rPr lang="en-US"/>
+              <a:t>${question}</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+        <p:custDataLst><p:tags r:id="rId2"/></p:custDataLst>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="Answers Placeholder"/>
+          <p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>
+          <p:nvPr><p:ph type="body" idx="1"/></p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="685800" y="2743200"/>
+            <a:ext cx="10820400" cy="3429000"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:r>
+              <a:rPr lang="en-US"/>
+              <a:t>Vrai | Faux</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+        <p:custDataLst><p:tags r:id="rId3"/></p:custDataLst>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="Countdown Timer"/>
+          <p:cNvSpPr/>
+          <p:nvPr/>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="10973100" y="457200"/>
+            <a:ext cx="914400" cy="457200"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:r>
+              <a:rPr lang="en-US"/>
+              <a:t>${String(Math.floor(duration / 60)).padStart(2, '0')}:${String(duration % 60).padStart(2, '0')}</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+        <p:custDataLst><p:tags r:id="rId4"/></p:custDataLst>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
+  <p:custDataLst><p:tags r:id="rId1"/></p:custDataLst>
+</p:sld>`;
+// CORRECTION 4: Ajouter le fichier tableStyles.xml manquant
+
+const createSlideRelsXml = (slideNumber: number) => {
+  const baseTagIndex = 2 + (slideNumber - 1) * 4; // Your indexing is correct
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagIndex}.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagIndex + 1}.xml"/>
+<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagIndex + 2}.xml"/>
+<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagIndex + 3}.xml"/>
+<Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+</Relationships>`;
+};
 const createTagPresentationXml = () => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:tagLst xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" 
           xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" 
@@ -491,8 +607,8 @@ const createTagQuestionXml = (question: string, duration: number) => `<?xml vers
           xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" 
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <p:tag name="OR_SLIDE_TYPE" val="OR_QUESTION_SLIDE"/>
-  <p:tag name="OR_QUESTION_TEXT" val="\${question}"/>
-  <p:tag name="OR_POLL_TIME_LIMIT" val="\${duration}"/>
+  <p:tag name="OR_QUESTION_TEXT" val="${question}"/>
+  <p:tag name="OR_POLL_TIME_LIMIT" val="${duration}"/>
   <p:tag name="OR_CHART_COLOR_MODE" val="Color_Scheme"/>
 </p:tagLst>`;
 
@@ -509,7 +625,7 @@ const createTagAnswersXml = (correctAnswer: boolean) => `<?xml version="1.0" enc
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <p:tag name="OR_SHAPE_TYPE" val="OR_ANSWERS"/>
   <p:tag name="OR_ANSWERS_TEXT" val="Vrai|Faux"/>
-  <p:tag name="OR_ANSWER_POINTS" val="\${correctAnswer ? '1.00,0.00' : '0.00,1.00'}"/>
+  <p:tag name="OR_ANSWER_POINTS" val="${correctAnswer ? '1.00,0.00' : '0.00,1.00'}"/>
 </p:tagLst>`;
 
 const createTagCountdownXml = () => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -518,6 +634,7 @@ const createTagCountdownXml = () => `<?xml version="1.0" encoding="UTF-8" standa
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <p:tag name="OR_SHAPE_TYPE" val="OR_COUNTDOWN"/>
 </p:tagLst>`;
+
 export async function generatePPTX(templateFile: File | null, questions: Question[], defaultDuration: number): Promise<void> {
   return new Promise(async (resolve, reject) => {
     try {
@@ -562,7 +679,7 @@ export async function generatePPTX(templateFile: File | null, questions: Questio
                 folder.forEach((_relativePath, fileEntry) => { 
                     if (!fileEntry.dir) {
                         const promise = fileEntry.async('blob').then(content => {
-                            zip.file(fileEntry.name, content); 
+                          zip.file(`${folderPath}/${_relativePath}`, content);
                         });
                         promises.push(promise);
                     }
@@ -573,11 +690,21 @@ export async function generatePPTX(templateFile: File | null, questions: Questio
       }
 
       // Add fixed base files
-      zip.file('[Content_Types].xml', baseContentTypes);
+      // CHANGEMENT 1: Utiliser la fonction de Content Types dynamique
+      zip.file('[Content_Types].xml', createContentTypes(questions.length));
+      
       zip.file('_rels/.rels', baseRels);
       zip.file('docProps/app.xml', baseAppProps);
-      zip.file('docProps/core.xml', baseCoreProps);
-      zip.file('ppt/tags/tag1.xml', createTagPresentationXml()); 
+      
+      // CHANGEMENT 2: Utiliser la fonction corrigée pour core props
+      zip.file('docProps/core.xml', createCoreProps());
+      
+      // CHANGEMENT 3: Ajouter tableStyles.xml obligatoire
+      if (!zip.file('ppt/tableStyles.xml')) {
+        zip.file('ppt/tableStyles.xml', defaultTableStylesXml);
+      }
+      
+      zip.file('ppt/tags/tag1.xml', createTagPresentationXml());
 
       // Add default theme if not provided by template
       if (!zip.file('ppt/theme/theme1.xml')) {
@@ -612,57 +739,59 @@ export async function generatePPTX(templateFile: File | null, questions: Questio
       
       const presentationMasterRelId = "rIdMaster1"; 
       const presentationTagRelId = "rIdPresTag"; 
-      const themeRelId = "rIdTheme1"; 
 
-      let sldIdLstContent = ''; // Single declaration of sldIdLstContent
-      // Base relationships for ppt/_rels/presentation.xml.rels
-      // Paths are relative to the ppt folder for these relationships
-      let presRelXmlContent = `<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>
-<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">
-  <Relationship Id=\"\${presentationMasterRelId}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster\" Target=\"slideMasters/slideMaster1.xml\"/>
-  <Relationship Id=\"\${presentationTagRelId}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags\" Target=\"tags/tag1.xml\"/>
-  <Relationship Id=\"\${themeRelId}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme\" Target=\"theme/theme1.xml\"/>`;
+      let sldIdLstContent = '';
+      let presRelXmlContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdMaster1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
+  <Relationship Id="rIdPresTag" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="tags/tag1.xml"/>
+  <Relationship Id="rIdTheme1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>
+  <Relationship Id="rIdTableStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles" Target="tableStyles.xml"/>`;
 
       // Loop through questions to generate slides and their relationships
+      // CHANGEMENT 4: Utiliser la fonction de slide corrigée
       for (let i = 0; i < questions.length; i++) {
         const slideNumber = i + 1;
         const questionItem = questions[i]; 
         const duration = questionItem.duration || defaultDuration;
-        const slideRelId = \`rIdSlide\${slideNumber}\`; 
+        const slideRelId = `rIdSlide${slideNumber}`; 
         const slidePersistId = 255 + slideNumber; 
 
-        sldIdLstContent += \`<p:sldId id=\"\${slidePersistId}\" r:id=\"\${slideRelId}\"/>\`;
-        presRelXmlContent += \`
-  <Relationship Id=\"\${slideRelId}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide\" Target=\"slides/slide\${slideNumber}.xml\"/>\`;
+        sldIdLstContent += `<p:sldId id="${slidePersistId}" r:id="${slideRelId}"/>`;
+        presRelXmlContent += `
+  <Relationship Id="${slideRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${slideNumber}.xml"/>`;
+      
+        // CHANGEMENT 5: Utiliser createSlideXml au lieu de baseSlide
+        zip.file(`ppt/slides/slide${slideNumber}.xml`, createSlideXml(questionItem.question, duration));
+        zip.file(`ppt/slides/_rels/slide${slideNumber}.xml.rels`, createSlideRelsXml(slideNumber));
         
-        zip.file(\`ppt/slides/slide\${slideNumber}.xml\`, baseSlide);
-        zip.file(\`ppt/slides/_rels/slide\${slideNumber}.xml.rels\`, createSlideRelsXml(slideNumber));
-        
-        const baseTagIndex = (slideNumber - 1) * 4;
-        zip.file(\`ppt/tags/tag\${baseTagIndex + 2}.xml\`, createTagQuestionXml(questionItem.question, duration));
-        zip.file(\`ppt/tags/tag\${baseTagIndex + 3}.xml\`, createTagTitleXml());
-        zip.file(\`ppt/tags/tag\${baseTagIndex + 4}.xml\`, createTagAnswersXml(questionItem.correctAnswer));
-        zip.file(\`ppt/tags/tag\${baseTagIndex + 5}.xml\`, createTagCountdownXml());
+        // Tags pour chaque slide
+        const baseTagIndex = 2 + (slideNumber - 1) * 4;
+        zip.file(`ppt/tags/tag${baseTagIndex}.xml`, createTagQuestionXml(questionItem.question, duration));
+        zip.file(`ppt/tags/tag${baseTagIndex + 1}.xml`, createTagTitleXml());
+        zip.file(`ppt/tags/tag${baseTagIndex + 2}.xml`, createTagAnswersXml(questionItem.correctAnswer));
+        zip.file(`ppt/tags/tag${baseTagIndex + 3}.xml`, createTagCountdownXml());
       }
-      presRelXmlContent += \`
-</Relationships>\`;
+      
+      presRelXmlContent += `
+</Relationships>`;
       zip.file('ppt/_rels/presentation.xml.rels', presRelXmlContent);
 
-      const dynamicPresentationXml = \`<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>
-<p:presentation xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" 
-                xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" 
-                xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\">
+      const dynamicPresentationXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" 
+                xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" 
+                xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
   <p:sldMasterIdLst>
-    <p:sldMasterId id=\"2147483648\" r:id=\"\${presentationMasterRelId}\"/>
+    <p:sldMasterId id="2147483648" r:id="${presentationMasterRelId}"/>
   </p:sldMasterIdLst>
-  <p:sldIdLst>\${sldIdLstContent}</p:sldIdLst>
-  <p:sldSz cx=\"12192000\" cy=\"6858000\"/>
-  <p:notesSz cx=\"6858000\" cy=\"9144000\"/>
+  <p:sldIdLst>${sldIdLstContent}</p:sldIdLst>
+  <p:sldSz cx="12192000" cy="6858000"/>
+  <p:notesSz cx="6858000" cy="9144000"/>
   <p:defaultTextStyle/>
   <p:custDataLst>
-    <p:tags r:id=\"\${presentationTagRelId}\"/>
+    <p:tags r:id="${presentationTagRelId}"/>
   </p:custDataLst>
-</p:presentation>\`;
+</p:presentation>`;
       zip.file('ppt/presentation.xml', dynamicPresentationXml);
       
       const outputZip = await zip.generateAsync({
@@ -670,12 +799,12 @@ export async function generatePPTX(templateFile: File | null, questions: Questio
         mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
       });
       
-      saveAs(outputZip, \`OMBEA_Questions_\${new Date().toISOString().slice(0, 10)}.pptx\`);
+      saveAs(outputZip, `OMBEA_Questions_${new Date().toISOString().slice(0, 10)}.pptx`);
       
       resolve();
     } catch (error) {
       console.error('Error generating PPTX:', error);
       reject(error);
     }
-  });
+  });  // <-- Cette ligne ferme la Promise
 }
