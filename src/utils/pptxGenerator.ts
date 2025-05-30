@@ -388,173 +388,154 @@ const defaultSlideLayoutRelsXml = `<?xml version="1.0" encoding="UTF-8" standalo
 </Relationships>`;
 
 const defaultSlideLayoutXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="tx" preserve="1">
-<p:cSld name="Titre et texte">
-<p:spTree>
-<p:nvGrpSpPr>
-<p:cNvPr id="1" name=""/>
-<p:cNvGrpSpPr/>
-<p:nvPr/>
-</p:nvGrpSpPr>
-<p:grpSpPr>
-<a:xfrm>
-<a:off x="0" y="0"/>
-<a:ext cx="0" cy="0"/>
-<a:chOff x="0" y="0"/>
-<a:chExt cx="0" cy="0"/>
-</a:xfrm>
-</p:grpSpPr>
-<p:sp>
-<p:nvSpPr>
-<p:cNvPr id="2" name="Titre 1"/>
-<p:cNvSpPr>
-<a:spLocks noGrp="1"/>
-</p:cNvSpPr>
-<p:nvPr>
-<p:ph type="title"/>
-</p:nvPr>
-</p:nvSpPr>
-<p:spPr/>
-<p:txBody>
-<a:bodyPr/>
-<a:lstStyle/>
-<a:p>
-<a:r>
-<a:rPr lang="fr-FR" smtClean="0"/>
-<a:t>Modifiez le style du titre</a:t>
-</a:r>
-<a:endParaRPr lang="fr-FR"/>
-</a:p>
-</p:txBody>
-</p:sp>
-<p:sp>
-<p:nvSpPr>
-<p:cNvPr id="3" name="Espace réservé du texte 2"/>
-<p:cNvSpPr>
-<a:spLocks noGrp="1"/>
-</p:cNvSpPr>
-<p:nvPr>
-<p:ph type="body" idx="1"/>
-</p:nvPr>
-</p:nvSpPr>
-<p:spPr/>
-<p:txBody>
-<a:bodyPr/>
-<a:lstStyle/>
-<a:p>
-<a:pPr lvl="0"/>
-<a:r>
-<a:rPr lang="fr-FR" smtClean="0"/>
-<a:t>Modifiez les styles du texte du masque</a:t>
-</a:r>
-</a:p>
-<a:p>
-<a:pPr lvl="1"/>
-<a:r>
-<a:rPr lang="fr-FR" smtClean="0"/>
-<a:t>Deuxième niveau</a:t>
-</a:r>
-</a:p>
-<a:p>
-<a:pPr lvl="2"/>
-<a:r>
-<a:rPr lang="fr-FR" smtClean="0"/>
-<a:t>Troisième niveau</a:t>
-</a:r>
-</a:p>
-<a:p>
-<a:pPr lvl="3"/>
-<a:r>
-<a:rPr lang="fr-FR" smtClean="0"/>
-<a:t>Quatrième niveau</a:t>
-</a:r>
-</a:p>
-<a:p>
-<a:pPr lvl="4"/>
-<a:r>
-<a:rPr lang="fr-FR" smtClean="0"/>
-<a:t>Cinquième niveau</a:t>
-</a:r>
-<a:endParaRPr lang="fr-FR"/>
-</a:p>
-</p:txBody>
-</p:sp>
-<p:sp>
-<p:nvSpPr>
-<p:cNvPr id="4" name="Espace réservé de la date 3"/>
-<p:cNvSpPr>
-<a:spLocks noGrp="1"/>
-</p:cNvSpPr>
-<p:nvPr>
-<p:ph type="dt" sz="half" idx="10"/>
-</p:nvPr>
-</p:nvSpPr>
-<p:spPr/>
-<p:txBody>
-<a:bodyPr/>
-<a:lstStyle/>
-<a:p>
-<a:fld id="{ABB4FD2C-0372-488A-B992-EB1BD753A34A}" type="datetimeFigureOut">
-<a:rPr lang="fr-FR" smtClean="0"/>
-<a:t>28/05/2025</a:t>
-</a:fld>
-<a:endParaRPr lang="fr-FR"/>
-</a:p>
-</p:txBody>
-</p:sp>
-<p:sp>
-<p:nvSpPr>
-<p:cNvPr id="5" name="Espace réservé du pied de page 4"/>
-<p:cNvSpPr>
-<a:spLocks noGrp="1"/>
-</p:cNvSpPr>
-<p:nvPr>
-<p:ph type="ftr" sz="quarter" idx="11"/>
-</p:nvPr>
-</p:nvSpPr>
-<p:spPr/>
-<p:txBody>
-<a:bodyPr/>
-<a:lstStyle/>
-<a:p>
-<a:endParaRPr lang="fr-FR"/>
-</a:p>
-</p:txBody>
-</p:sp>
-<p:sp>
-<p:nvSpPr>
-<p:cNvPr id="6" name="Espace réservé du numéro de diapositive 5"/>
-<p:cNvSpPr>
-<a:spLocks noGrp="1"/>
-</p:cNvSpPr>
-<p:nvPr>
-<p:ph type="sldNum" sz="quarter" idx="12"/>
-</p:nvPr>
-</p:nvSpPr>
-<p:spPr/>
-<p:txBody>
-<a:bodyPr/>
-<a:lstStyle/>
-<a:p>
-<a:fld id="{CD42254F-ACD2-467B-9045-5226EEC3B6AB}" type="slidenum">
-<a:rPr lang="fr-FR" smtClean="0"/>
-<a:t>‹N°›</a:t>
-</a:fld>
-<a:endParaRPr lang="fr-FR"/>
-</a:p>
-</p:txBody>
-</p:sp>
-</p:spTree>
-<p:extLst>
-<p:ext uri="{BB962C8B-B14F-4D97-AF65-F5344CB8AC3E}">
-<p14:creationId xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="2131546393"/>
-</p:ext>
-</p:extLst>
-</p:cSld>
-<p:clrMapOvr>
-<a:masterClrMapping/>
-</p:clrMapOvr>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+             xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+             xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+             type="tx" preserve="1">
+  <p:cSld name="Titre et texte">
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+
+      <!-- Titre -->
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="Titre 1"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="title"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:r>
+              <a:rPr lang="fr-FR" smtClean="0"/>
+              <a:t>Modifiez le style du titre</a:t>
+            </a:r>
+            <a:endParaRPr lang="fr-FR"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+
+      <!-- Corps du texte -->
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="Espace réservé du texte 2"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p><a:pPr lvl="0"/><a:r><a:rPr lang="fr-FR" smtClean="0"/><a:t>Modifiez les styles du texte du masque</a:t></a:r></a:p>
+          <a:p><a:pPr lvl="1"/><a:r><a:rPr lang="fr-FR" smtClean="0"/><a:t>Deuxième niveau</a:t></a:r></a:p>
+          <a:p><a:pPr lvl="2"/><a:r><a:rPr lang="fr-FR" smtClean="0"/><a:t>Troisième niveau</a:t></a:r></a:p>
+          <a:p><a:pPr lvl="3"/><a:r><a:rPr lang="fr-FR" smtClean="0"/><a:t>Quatrième niveau</a:t></a:r></a:p>
+          <a:p><a:pPr lvl="4"/><a:r><a:rPr lang="fr-FR" smtClean="0"/><a:t>Cinquième niveau</a:t></a:r><a:endParaRPr lang="fr-FR"/></a:p>
+        </p:txBody>
+      </p:sp>
+
+      <!-- Date -->
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="4" name="Espace réservé de la date 3"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="dt" sz="half" idx="10"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:fld id="{ABB4FD2C-0372-488A-B992-EB1BD753A34A}" type="datetimeFigureOut">
+              <a:rPr lang="fr-FR" smtClean="0"/>
+              <a:t>28/05/2025</a:t>
+            </a:fld>
+            <a:endParaRPr lang="fr-FR"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+
+      <!-- Pied de page -->
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="5" name="Espace réservé du pied de page 4"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="ftr" sz="quarter" idx="11"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p><a:endParaRPr lang="fr-FR"/></a:p>
+        </p:txBody>
+      </p:sp>
+
+      <!-- Numéro de diapositive -->
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="6" name="Espace réservé du numéro de diapositive 5"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="sldNum" sz="quarter" idx="12"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:fld id="{CD42254F-ACD2-467B-9045-5226EEC3B6AB}" type="slidenum">
+              <a:rPr lang="fr-FR" smtClean="0"/>
+              <a:t>‹N°›</a:t>
+            </a:fld>
+            <a:endParaRPr lang="fr-FR"/>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+    <p:extLst>
+      <p:ext uri="{BB962C8B-B14F-4D97-AF65-F5344CB8AC3E}">
+        <p14:creationId xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="2131546393"/>
+      </p:ext>
+    </p:extLst>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
 </p:sldLayout>`;
+
 
 const defaultTableStylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}">
@@ -627,15 +608,17 @@ const createCoreProps = () => {
 
 // FIXED: All interpolations corrected
 const createSlideXml = (question: string, duration: number) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" 
-       xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" 
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+       xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
        xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
   <p:cSld>
     <p:spTree>
       <p:nvGrpSpPr>
         <p:cNvPr id="1" name=""/>
         <p:cNvGrpSpPr/>
-        <p:nvPr/>
+        <p:nvPr>
+          <p:custDataLst><p:tags r:id="rId1"/></p:custDataLst>
+        </p:nvPr>
       </p:nvGrpSpPr>
       <p:grpSpPr>
         <a:xfrm>
@@ -645,11 +628,16 @@ const createSlideXml = (question: string, duration: number) => `<?xml version="1
           <a:chExt cx="0" cy="0"/>
         </a:xfrm>
       </p:grpSpPr>
+
+      <!-- Titre -->
       <p:sp>
         <p:nvSpPr>
           <p:cNvPr id="2" name="Title Placeholder"/>
           <p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>
-          <p:nvPr><p:ph type="title"/></p:nvPr>
+          <p:nvPr>
+            <p:ph type="title"/>
+            <p:custDataLst><p:tags r:id="rId2"/></p:custDataLst>
+          </p:nvPr>
         </p:nvSpPr>
         <p:spPr>
           <a:xfrm>
@@ -667,13 +655,17 @@ const createSlideXml = (question: string, duration: number) => `<?xml version="1
             </a:r>
           </a:p>
         </p:txBody>
-        <p:custDataLst><p:tags r:id="rId2"/></p:custDataLst>
       </p:sp>
+
+      <!-- Réponses -->
       <p:sp>
         <p:nvSpPr>
           <p:cNvPr id="3" name="Answers Placeholder"/>
           <p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>
-          <p:nvPr><p:ph type="body" idx="1"/></p:nvPr>
+          <p:nvPr>
+            <p:ph type="body" idx="1"/>
+            <p:custDataLst><p:tags r:id="rId3"/></p:custDataLst>
+          </p:nvPr>
         </p:nvSpPr>
         <p:spPr>
           <a:xfrm>
@@ -704,13 +696,16 @@ const createSlideXml = (question: string, duration: number) => `<?xml version="1
             </a:r>
           </a:p>
         </p:txBody>
-        <p:custDataLst><p:tags r:id="rId3"/></p:custDataLst>
       </p:sp>
+
+      <!-- Compte à rebours -->
       <p:sp>
         <p:nvSpPr>
           <p:cNvPr id="4" name="Countdown Timer"/>
           <p:cNvSpPr/>
-          <p:nvPr/>
+          <p:nvPr>
+            <p:custDataLst><p:tags r:id="rId4"/></p:custDataLst>
+          </p:nvPr>
         </p:nvSpPr>
         <p:spPr>
           <a:xfrm>
@@ -728,26 +723,40 @@ const createSlideXml = (question: string, duration: number) => `<?xml version="1
             </a:r>
           </a:p>
         </p:txBody>
-        <p:custDataLst><p:tags r:id="rId4"/></p:custDataLst>
       </p:sp>
     </p:spTree>
+    <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
   </p:cSld>
-  <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
-  <p:custDataLst><p:tags r:id="rId1"/></p:custDataLst>
 </p:sld>`;
+
 // CORRECTION 4: Ajouter le fichier tableStyles.xml manquant
 
 const createSlideRelsXml = (slideNumber: number) => {
   const baseTagIndex = 2 + (slideNumber - 1) * 4;
+
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag\${baseTagIndex}.xml"/>
-<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag\${baseTagIndex + 1}.xml"/>
-<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag\${baseTagIndex + 2}.xml"/>
-<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag\${baseTagIndex + 3}.xml"/>
-<Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout12.xml"/>
+  <!-- Tag global de la présentation -->
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag1.xml"/>
+
+  <!-- Tag de la question (slide) -->
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagIndex}.xml"/>
+
+  <!-- Tag du titre -->
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagIndex + 1}.xml"/>
+
+  <!-- Tag des réponses -->
+  <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagIndex + 2}.xml"/>
+
+  <!-- Tag du timer -->
+  <Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagIndex + 3}.xml"/>
+
+  <!-- Slide layout -->
+  <Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout12.xml"/>
 </Relationships>`;
 };
+
+
 const createTagPresentationXml = () => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:tagLst xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" 
           xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" 
@@ -755,12 +764,11 @@ const createTagPresentationXml = () => `<?xml version="1.0" encoding="UTF-8" sta
   <p:tag name="OR_PRESENTATION" val="1"/>
 </p:tagLst>`;
 
-const createTagQuestionXml = (question: string, duration: number) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+const createTagQuestionXml = (duration: number) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:tagLst xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" 
           xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" 
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <p:tag name="OR_SLIDE_TYPE" val="OR_QUESTION_SLIDE"/>
-  <p:tag name="OR_QUESTION_TEXT" val="${question}"/>
   <p:tag name="OR_POLL_TIME_LIMIT" val="${duration}"/>
   <p:tag name="OR_CHART_COLOR_MODE" val="Color_Scheme"/>
 </p:tagLst>`;
@@ -895,12 +903,15 @@ export async function generatePPTX(templateFile: File | null, questions: Questio
 
       let sldIdLstContent = '';
       let presRelXmlContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rIdMaster1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
-  <Relationship Id="rIdPresTag" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="tags/tag1.xml"/>
-  <Relationship Id="rIdTheme1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>
-  <Relationship Id="rIdTableStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles" Target="tableStyles.xml"/>`;
-
+      <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+        <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="../docProps/core.xml"/>
+        <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="../docProps/app.xml"/>
+        <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="../ppt/presentation.xml"/>
+        <Relationship Id="rIdMaster1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
+        <Relationship Id="rIdPresTag" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="tags/tag1.xml"/>
+        <Relationship Id="rIdTheme1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>
+        <Relationship Id="rIdTableStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles" Target="tableStyles.xml"/>`;
+      
       // Loop through questions to generate slides and their relationships
       // CHANGEMENT 4: Utiliser la fonction de slide corrigée
       for (let i = 0; i < questions.length; i++) {
@@ -920,7 +931,7 @@ export async function generatePPTX(templateFile: File | null, questions: Questio
         
         // Tags pour chaque slide
         const baseTagIndex = 2 + (slideNumber - 1) * 4;
-        zip.file(`ppt/tags/tag${baseTagIndex}.xml`, createTagQuestionXml(questionItem.question, duration));
+        zip.file(`ppt/tags/tag${baseTagIndex}.xml`, createTagQuestionXml(duration));
         zip.file(`ppt/tags/tag${baseTagIndex + 1}.xml`, createTagTitleXml());
         zip.file(`ppt/tags/tag${baseTagIndex + 2}.xml`, createTagAnswersXml(questionItem.correctAnswer));
         zip.file(`ppt/tags/tag${baseTagIndex + 3}.xml`, createTagCountdownXml());
