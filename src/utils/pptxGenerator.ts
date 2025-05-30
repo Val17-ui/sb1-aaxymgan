@@ -7,6 +7,18 @@ interface Question {
   imagePath?: string;
   duration?: number;
 }
+function escapeXml(unsafe: string): string {
+  return unsafe.replace(/[<>&'"]/g, function (c: string): string {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '"': return '&quot;';
+      case "'": return '&apos;';
+      default: return c;
+    }
+  });
+}
 
 const defaultPresPropsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentationPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"/>`;
 
@@ -33,7 +45,7 @@ const createContentTypes = (questionCount: number) => {
   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
   <Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/>
   <Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
-  <Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>`;
+  <Override PartName="/ppt/slideLayouts/slideLayout12.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>`;
 
   // Add types for each slide
   for (let i = 1; i <= questionCount; i++) {
@@ -377,43 +389,171 @@ const defaultSlideLayoutRelsXml = `<?xml version="1.0" encoding="UTF-8" standalo
 
 const defaultSlideLayoutXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="tx" preserve="1">
-  <p:cSld name="Title and Content">
-    <p:spTree>
-      <p:nvGrpSpPr>
-        <p:cNvPr id="1" name=""/>
-        <p:cNvGrpSpPr/>
-        <p:nvPr/>
-      </p:nvGrpSpPr>
-      <p:grpSpPr/>
-      <p:sp>
-        <p:nvSpPr>
-          <p:cNvPr id="2" name="Title 1"/>
-          <p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>
-          <p:nvPr><p:ph type="title"/></p:nvPr>
-        </p:nvSpPr>
-        <p:spPr/>
-        <p:txBody>
-          <a:bodyPr/>
-          <a:lstStyle/>
-          <a:p><a:r><a:t>Default Title</a:t></a:r></a:p>
-        </p:txBody>
-      </p:sp>
-      <p:sp>
-        <p:nvSpPr>
-          <p:cNvPr id="3" name="Content Placeholder 2"/>
-          <p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>
-          <p:nvPr><p:ph type="body" idx="1"/></p:nvPr>
-        </p:nvSpPr>
-        <p:spPr/>
-        <p:txBody>
-          <a:bodyPr/>
-          <a:lstStyle/>
-          <a:p><a:pPr lvl="0"/><a:r><a:t>Default Content</a:t></a:r></a:p>
-        </p:txBody>
-      </p:sp>
-    </p:spTree>
-  </p:cSld>
-  <p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>
+<p:cSld name="Titre et texte">
+<p:spTree>
+<p:nvGrpSpPr>
+<p:cNvPr id="1" name=""/>
+<p:cNvGrpSpPr/>
+<p:nvPr/>
+</p:nvGrpSpPr>
+<p:grpSpPr>
+<a:xfrm>
+<a:off x="0" y="0"/>
+<a:ext cx="0" cy="0"/>
+<a:chOff x="0" y="0"/>
+<a:chExt cx="0" cy="0"/>
+</a:xfrm>
+</p:grpSpPr>
+<p:sp>
+<p:nvSpPr>
+<p:cNvPr id="2" name="Titre 1"/>
+<p:cNvSpPr>
+<a:spLocks noGrp="1"/>
+</p:cNvSpPr>
+<p:nvPr>
+<p:ph type="title"/>
+</p:nvPr>
+</p:nvSpPr>
+<p:spPr/>
+<p:txBody>
+<a:bodyPr/>
+<a:lstStyle/>
+<a:p>
+<a:r>
+<a:rPr lang="fr-FR" smtClean="0"/>
+<a:t>Modifiez le style du titre</a:t>
+</a:r>
+<a:endParaRPr lang="fr-FR"/>
+</a:p>
+</p:txBody>
+</p:sp>
+<p:sp>
+<p:nvSpPr>
+<p:cNvPr id="3" name="Espace réservé du texte 2"/>
+<p:cNvSpPr>
+<a:spLocks noGrp="1"/>
+</p:cNvSpPr>
+<p:nvPr>
+<p:ph type="body" idx="1"/>
+</p:nvPr>
+</p:nvSpPr>
+<p:spPr/>
+<p:txBody>
+<a:bodyPr/>
+<a:lstStyle/>
+<a:p>
+<a:pPr lvl="0"/>
+<a:r>
+<a:rPr lang="fr-FR" smtClean="0"/>
+<a:t>Modifiez les styles du texte du masque</a:t>
+</a:r>
+</a:p>
+<a:p>
+<a:pPr lvl="1"/>
+<a:r>
+<a:rPr lang="fr-FR" smtClean="0"/>
+<a:t>Deuxième niveau</a:t>
+</a:r>
+</a:p>
+<a:p>
+<a:pPr lvl="2"/>
+<a:r>
+<a:rPr lang="fr-FR" smtClean="0"/>
+<a:t>Troisième niveau</a:t>
+</a:r>
+</a:p>
+<a:p>
+<a:pPr lvl="3"/>
+<a:r>
+<a:rPr lang="fr-FR" smtClean="0"/>
+<a:t>Quatrième niveau</a:t>
+</a:r>
+</a:p>
+<a:p>
+<a:pPr lvl="4"/>
+<a:r>
+<a:rPr lang="fr-FR" smtClean="0"/>
+<a:t>Cinquième niveau</a:t>
+</a:r>
+<a:endParaRPr lang="fr-FR"/>
+</a:p>
+</p:txBody>
+</p:sp>
+<p:sp>
+<p:nvSpPr>
+<p:cNvPr id="4" name="Espace réservé de la date 3"/>
+<p:cNvSpPr>
+<a:spLocks noGrp="1"/>
+</p:cNvSpPr>
+<p:nvPr>
+<p:ph type="dt" sz="half" idx="10"/>
+</p:nvPr>
+</p:nvSpPr>
+<p:spPr/>
+<p:txBody>
+<a:bodyPr/>
+<a:lstStyle/>
+<a:p>
+<a:fld id="{ABB4FD2C-0372-488A-B992-EB1BD753A34A}" type="datetimeFigureOut">
+<a:rPr lang="fr-FR" smtClean="0"/>
+<a:t>28/05/2025</a:t>
+</a:fld>
+<a:endParaRPr lang="fr-FR"/>
+</a:p>
+</p:txBody>
+</p:sp>
+<p:sp>
+<p:nvSpPr>
+<p:cNvPr id="5" name="Espace réservé du pied de page 4"/>
+<p:cNvSpPr>
+<a:spLocks noGrp="1"/>
+</p:cNvSpPr>
+<p:nvPr>
+<p:ph type="ftr" sz="quarter" idx="11"/>
+</p:nvPr>
+</p:nvSpPr>
+<p:spPr/>
+<p:txBody>
+<a:bodyPr/>
+<a:lstStyle/>
+<a:p>
+<a:endParaRPr lang="fr-FR"/>
+</a:p>
+</p:txBody>
+</p:sp>
+<p:sp>
+<p:nvSpPr>
+<p:cNvPr id="6" name="Espace réservé du numéro de diapositive 5"/>
+<p:cNvSpPr>
+<a:spLocks noGrp="1"/>
+</p:cNvSpPr>
+<p:nvPr>
+<p:ph type="sldNum" sz="quarter" idx="12"/>
+</p:nvPr>
+</p:nvSpPr>
+<p:spPr/>
+<p:txBody>
+<a:bodyPr/>
+<a:lstStyle/>
+<a:p>
+<a:fld id="{CD42254F-ACD2-467B-9045-5226EEC3B6AB}" type="slidenum">
+<a:rPr lang="fr-FR" smtClean="0"/>
+<a:t>‹N°›</a:t>
+</a:fld>
+<a:endParaRPr lang="fr-FR"/>
+</a:p>
+</p:txBody>
+</p:sp>
+</p:spTree>
+<p:extLst>
+<p:ext uri="{BB962C8B-B14F-4D97-AF65-F5344CB8AC3E}">
+<p14:creationId xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="2131546393"/>
+</p:ext>
+</p:extLst>
+</p:cSld>
+<p:clrMapOvr>
+<a:masterClrMapping/>
+</p:clrMapOvr>
 </p:sldLayout>`;
 
 const defaultTableStylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -523,7 +663,7 @@ const createSlideXml = (question: string, duration: number) => `<?xml version="1
           <a:p>
             <a:r>
               <a:rPr lang="en-US"/>
-              <a:t>${question}</a:t>
+              <a:t>${escapeXml(question)}</a:t>
             </a:r>
           </a:p>
         </p:txBody>
@@ -543,11 +683,24 @@ const createSlideXml = (question: string, duration: number) => `<?xml version="1
         </p:spPr>
         <p:txBody>
           <a:bodyPr/>
-          <a:lstStyle/>
+          <a:lstStyle>
+            <a:lvl1pPr>
+              <a:buFont typeface="Arial"/>
+              <a:buAutoNum type="arabicPeriod"/>
+            </a:lvl1pPr>
+          </a:lstStyle>
           <a:p>
+            <a:pPr lvl="0"/>
             <a:r>
               <a:rPr lang="en-US"/>
-              <a:t>Vrai | Faux</a:t>
+              <a:t>Vrai</a:t>
+            </a:r>
+          </a:p>
+          <a:p>
+            <a:pPr lvl="0"/>
+            <a:r>
+              <a:rPr lang="en-US"/>
+              <a:t>Faux</a:t>
             </a:r>
           </a:p>
         </p:txBody>
@@ -571,7 +724,7 @@ const createSlideXml = (question: string, duration: number) => `<?xml version="1
           <a:p>
             <a:r>
               <a:rPr lang="en-US"/>
-              <a:t>${String(Math.floor(duration / 60)).padStart(2, '0')}:${String(duration % 60).padStart(2, '0')}</a:t>
+              <a:t>${String(duration)}</a:t>
             </a:r>
           </a:p>
         </p:txBody>
@@ -585,14 +738,14 @@ const createSlideXml = (question: string, duration: number) => `<?xml version="1
 // CORRECTION 4: Ajouter le fichier tableStyles.xml manquant
 
 const createSlideRelsXml = (slideNumber: number) => {
-  const baseTagIndex = 2 + (slideNumber - 1) * 4; // Your indexing is correct
+  const baseTagIndex = 2 + (slideNumber - 1) * 4;
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagIndex}.xml"/>
-<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagIndex + 1}.xml"/>
-<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagIndex + 2}.xml"/>
-<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagIndex + 3}.xml"/>
-<Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag\${baseTagIndex}.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag\${baseTagIndex + 1}.xml"/>
+<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag\${baseTagIndex + 2}.xml"/>
+<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag\${baseTagIndex + 3}.xml"/>
+<Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout12.xml"/>
 </Relationships>`;
 };
 const createTagPresentationXml = () => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -624,7 +777,7 @@ const createTagAnswersXml = (correctAnswer: boolean) => `<?xml version="1.0" enc
           xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" 
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <p:tag name="OR_SHAPE_TYPE" val="OR_ANSWERS"/>
-  <p:tag name="OR_ANSWERS_TEXT" val="Vrai|Faux"/>
+  <p:tag name="OR_ANSWERS_TEXT" val="Vrai Faux"/>
   <p:tag name="OR_ANSWER_POINTS" val="${correctAnswer ? '1.00,0.00' : '0.00,1.00'}"/>
 </p:tagLst>`;
 
@@ -720,13 +873,13 @@ export async function generatePPTX(templateFile: File | null, questions: Questio
       }
 
       // Add default slide layout and its rels if not provided by template
-      if (!zip.file('ppt/slideLayouts/slideLayout1.xml')) {
-        zip.file('ppt/slideLayouts/slideLayout1.xml', defaultSlideLayoutXml);
+      if (!zip.file('ppt/slideLayouts/slideLayout12.xml')) { // Changed from slideLayout1.xml
+        zip.file('ppt/slideLayouts/slideLayout12.xml', defaultSlideLayoutXml); // Changed from slideLayout1.xml
       }
-      if (!zip.file('ppt/slideLayouts/_rels/slideLayout1.xml.rels')) {
-        zip.file('ppt/slideLayouts/_rels/slideLayout1.xml.rels', defaultSlideLayoutRelsXml);
+      if (!zip.file('ppt/slideLayouts/_rels/slideLayout12.xml.rels')) { // Changed from slideLayout1.xml.rels
+        zip.folder('ppt/slideLayouts/_rels'); // Ensure folder exists if not already
+        zip.file('ppt/slideLayouts/_rels/slideLayout12.xml.rels', defaultSlideLayoutRelsXml); // Changed from slideLayout1.xml.rels
       }
-
       // Add default presProps if not provided by template or if not copied
       if (!zip.file('ppt/presProps.xml')) {                         
         zip.file('ppt/presProps.xml', defaultPresPropsXml);         
@@ -800,11 +953,10 @@ export async function generatePPTX(templateFile: File | null, questions: Questio
       });
       
       saveAs(outputZip, `OMBEA_Questions_${new Date().toISOString().slice(0, 10)}.pptx`);
-      
-      resolve();
+    resolve();      
     } catch (error) {
-      console.error('Error generating PPTX:', error);
+      console.error('Erreur lors de la génération du PPTX :', error);
       reject(error);
     }
-  });  // <-- Cette ligne ferme la Promise
+  });
 }
