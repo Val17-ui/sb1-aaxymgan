@@ -447,30 +447,29 @@ async function ensureSlideLayout12Exists(zip: JSZip): Promise<void> {
   }
 }
 // Met à jour presentation.xml.rels pour inclure les relations vers les nouvelles slides et tag1
+// Remplacez la fonction updatePresentationRels par celle-ci :
 function updatePresentationRels(originalContent: string, newSlideCount: number, existingSlideCount: number): string {
   let updatedContent = originalContent;
   
+  // Ne PAS ajouter de relation vers tag1.xml dans presentation.xml.rels
+  // Le tag1.xml est référencé depuis presentation.xml mais pas ici
+  
+  const insertPoint = updatedContent.lastIndexOf('</Relationships>');
+  let newRelationships = '';
+  
   // Trouver le plus grand rId existant
   const rIdMatches = originalContent.match(/rId(\d+)/g) || [];
-  let maxRId = 1;
+  let maxRId = 0;
   rIdMatches.forEach(match => {
     const num = parseInt(match.replace('rId', ''));
     if (num > maxRId) maxRId = num;
   });
   
-  const insertPoint = updatedContent.lastIndexOf('</Relationships>');
-  let newRelationships = '';
-  
-  // Ajouter la relation vers tag1.xml si elle n'existe pas
-  if (!updatedContent.includes('tags/tag1.xml')) {
-    newRelationships += `\n  <Relationship Id="rId${maxRId + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="tags/tag1.xml"/>`;
-    maxRId++;
-  }
-  
-  // Ajouter les relations vers les nouvelles slides
-  for (let i = existingSlideCount + 1; i <= existingSlideCount + newSlideCount; i++) {
-    newRelationships += `\n  <Relationship Id="rId${maxRId + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i}.xml"/>`;
-    maxRId++;
+  // Ajouter les relations vers les nouvelles slides avec des rId séquentiels
+  for (let i = 0; i < newSlideCount; i++) {
+    const slideNum = existingSlideCount + i + 1;
+    const rId = maxRId + i + 1;
+    newRelationships += `\n  <Relationship Id="rId${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${slideNum}.xml"/>`;
   }
   
   return updatedContent.slice(0, insertPoint) + newRelationships + '\n' + updatedContent.slice(insertPoint);
@@ -778,14 +777,7 @@ function updateContentTypes(originalContent: string, newSlideCount: number, exis
 // Met à jour presentation.xml pour inclure les nouvelles slides et les tags OMBEA
 function updatePresentationXml(originalContent: string, newSlideCount: number, existingSlideCount: number): string {
   let updatedContent = originalContent;
-  
-  // Ajouter la référence custDataLst si elle n'existe pas
-  if (!updatedContent.includes('<p:custDataLst>')) {
-    const insertPoint = updatedContent.lastIndexOf('</p:presentation>');
-    const custDataLst = `\n  <p:custDataLst>\n    <p:tags r:id="rId10"/>\n  </p:custDataLst>`;
-    updatedContent = updatedContent.slice(0, insertPoint) + custDataLst + '\n' + updatedContent.slice(insertPoint);
-  }
-  
+   
   // Trouver la section sldIdLst
   const sldIdLstStart = updatedContent.indexOf('<p:sldIdLst>');
   const sldIdLstEnd = updatedContent.indexOf('</p:sldIdLst>') + '</p:sldIdLst>'.length;
@@ -794,28 +786,28 @@ function updatePresentationXml(originalContent: string, newSlideCount: number, e
     throw new Error('Structure presentation.xml invalide - section sldIdLst introuvable');
   }
   
-  // Extraire la section existante
-  const beforeSldIdLst = updatedContent.slice(0, sldIdLstStart);
-  const existingSldIdLst = updatedContent.slice(sldIdLstStart, sldIdLstEnd);
-  const afterSldIdLst = updatedContent.slice(sldIdLstEnd);
-  
-  // Créer les nouvelles entrées de slides avec rId alignés
-  let newSlideEntries = '';
-  let maxRId = 6; // Basé sur rId1 à rId6 existants dans presentation.xml.rels
-  if (!updatedContent.includes('tags/tag1.xml')) {
-    maxRId++; // Réserver rId7 pour tag1.xml
-  }
-  for (let i = existingSlideCount + 1; i <= existingSlideCount + newSlideCount; i++) {
-    const slideId = 256 + i; // Commencer à 257 pour slide2
-    const rId = `rId${maxRId + 1}`; // rId8 pour slide2.xml
-    newSlideEntries += `\n    <p:sldId id="${slideId}" r:id="${rId}"/>`;
-    maxRId++;
-  }
-  
-  // Insérer les nouvelles slides avant la fermeture de sldIdLst
-  const updatedSldIdLst = existingSldIdLst.replace('</p:sldIdLst>', newSlideEntries + '\n  </p:sldIdLst>');
-  
-  return beforeSldIdLst + updatedSldIdLst + afterSldIdLst;
+ // Extraire la section existante
+ const beforeSldIdLst = updatedContent.slice(0, sldIdLstStart);
+ const existingSldIdLst = updatedContent.slice(sldIdLstStart, sldIdLstEnd);
+ const afterSldIdLst = updatedContent.slice(sldIdLstEnd);
+ 
+ // Trouver le plus grand rId existant dans presentation.xml.rels
+ const presentationRelsFile = updatedContent; // Nous avons besoin de connaître maxRId
+ let maxExistingRId = 2; // Par défaut, slide1 a rId2
+ 
+ // Créer les nouvelles entrées de slides avec les bons rId
+ let newSlideEntries = '';
+ for (let i = 0; i < newSlideCount; i++) {
+   const slideNum = existingSlideCount + i + 1;
+   const slideId = 256 + slideNum; // 257 pour slide2, 258 pour slide3, etc.
+   const rId = maxExistingRId + i + 1; // rId3 pour slide2, rId4 pour slide3, etc.
+   newSlideEntries += `\n    <p:sldId id="${slideId}" r:id="rId${rId}"/>`;
+ }
+ 
+ // Insérer les nouvelles slides avant la fermeture de sldIdLst
+ const updatedSldIdLst = existingSldIdLst.replace('</p:sldIdLst>', newSlideEntries + '\n  </p:sldIdLst>');
+ 
+ return beforeSldIdLst + updatedSldIdLst + afterSldIdLst;
 }
 // Fonction utilitaire pour tester avec des données d'exemple
 export function createTestQuestions(): Question[] {
