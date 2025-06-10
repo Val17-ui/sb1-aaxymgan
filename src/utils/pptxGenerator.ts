@@ -107,6 +107,8 @@ function validateQuestions(questions: Question[]): void {
 // ========== GESTION DES LAYOUTS ==========
 
 // Trouve le prochain slideLayout disponible après les existants
+// Remplacer la fonction findNextAvailableSlideLayoutId :
+
 async function findNextAvailableSlideLayoutId(zip: JSZip): Promise<{ layoutId: number, layoutFileName: string, rId: string }> {
   const masterRelsFile = zip.file('ppt/slideMasters/_rels/slideMaster1.xml.rels');
   if (!masterRelsFile) {
@@ -127,19 +129,30 @@ async function findNextAvailableSlideLayoutId(zip: JSZip): Promise<{ layoutId: n
   // Le prochain layout sera maxLayoutNum + 1
   const nextLayoutNum = maxLayoutNum + 1;
   
-  // Trouver le prochain rId disponible dans slideMaster1.xml.rels
-  const rIdMatches = masterRelsContent.match(/rId(\d+)/g) || [];
-  let maxRId = 0;
+  // IMPORTANT : Extraire TOUS les rId existants
+  const allRIds = extractExistingRIds(masterRelsContent);
+  const existingRIds = allRIds.map(m => m.rId);
   
-  rIdMatches.forEach(match => {
-    const num = parseInt(match.replace('rId', ''));
-    if (num > maxRId) maxRId = num;
-  });
+  // Trouver le prochain rId disponible
+  let nextRId = getNextAvailableRId(existingRIds);
+  
+  // NOUVEAU : S'assurer que ce n'est pas rId12 (réservé pour theme)
+  if (nextRId === 'rId12') {
+    console.log('rId12 détecté, saut à rId13');
+    nextRId = 'rId13';
+    // Vérifier que rId13 n'est pas déjà pris
+    if (existingRIds.includes('rId13')) {
+      nextRId = getNextAvailableRId([...existingRIds, 'rId12', 'rId13']);
+    }
+  }
+  
+  console.log(`Prochain layout: slideLayout${nextLayoutNum}, rId: ${nextRId}`);
+  console.log(`rIds existants dans slideMaster1.xml.rels:`, existingRIds);
   
   return {
     layoutId: nextLayoutNum,
     layoutFileName: `slideLayout${nextLayoutNum}.xml`,
-    rId: `rId${maxRId + 1}`
+    rId: nextRId
   };
 }
 // ========== GESTION DES LAYOUTS (SUITE) ==========
@@ -679,140 +692,200 @@ function createSlideRelsXml(
 // Analyse et extrait tous les rId existants d'un fichier .rels
 function extractExistingRIds(relsContent: string): RIdMapping[] {
   const mappings: RIdMapping[] = [];
-  const relationshipRegex = /<Relationship\s+Id="(rId\d+)"\s+Type="([^"]+)"\s+Target="([^"]+)"/g;
+  // Regex améliorée pour capturer tous les attributs possibles
+  const relationshipRegex = /<Relationship\s+([^>]+)>/g;
   
   let match;
   while ((match = relationshipRegex.exec(relsContent)) !== null) {
-    mappings.push({
-      rId: match[1],
-      type: match[2],
-      target: match[3]
-    });
+    const attributes = match[1];
+    
+    // Extraire les attributs individuels
+    const idMatch = attributes.match(/Id="(rId\d+)"/);
+    const typeMatch = attributes.match(/Type="([^"]+)"/);
+    const targetMatch = attributes.match(/Target="([^"]+)"/);
+    
+    if (idMatch && typeMatch && targetMatch) {
+      mappings.push({
+        rId: idMatch[1],
+        type: typeMatch[1],
+        target: targetMatch[1]
+      });
+    }
   }
   
   return mappings;
 }
-
 // Trouve le prochain rId disponible
 function getNextAvailableRId(existingRIds: string[]): string {
   let maxId = 0;
   
   existingRIds.forEach(rId => {
-    const num = parseInt(rId.replace('rId', ''));
-    if (num > maxId) maxId = num;
+    const match = rId.match(/rId(\d+)/);
+    if (match) {
+      const num = parseInt(match[1]);
+      if (num > maxId) maxId = num;
+    }
   });
   
+  // Toujours retourner le prochain rId disponible
   return `rId${maxId + 1}`;
 }
 
 // ========== MISES À JOUR XML ==========
 
 // Met à jour presentation.xml avec les nouvelles slides
-// Remplacer la fonction updatePresentationXmlWithSlides par celle-ci :
 
-function updatePresentationXmlWithSlides(
-  originalContent: string, 
-  existingSlideCount: number,
+async function rebuildPresentationXml(
+  zip: JSZip,
   slideRIdMappings: { slideNumber: number; rId: string }[],
-  tag1RId: string // Nouveau paramètre pour passer le vrai rId de tag1
-): string {
-  let updatedContent = originalContent;
+  tag1RId: string,
+  existingSlideCount: number
+): Promise<void> {
+  const presentationFile = zip.file('ppt/presentation.xml');
+  if (!presentationFile) return;
   
-  // Ajouter la référence custDataLst pour tag1 si elle n'existe pas
-  if (!updatedContent.includes('<p:custDataLst>')) {
-    const insertPoint = updatedContent.lastIndexOf('</p:presentation>');
-    // Utiliser le vrai rId au lieu de rIdTag1
-    const custDataLst = `\n  <p:custDataLst>\n    <p:tags r:id="${tag1RId}"/>\n  </p:custDataLst>`;
-    updatedContent = updatedContent.slice(0, insertPoint) + custDataLst + '\n' + updatedContent.slice(insertPoint);
-  } else {
-    // Si custDataLst existe, s'assurer que le bon rId est utilisé
-    updatedContent = updatedContent.replace(/r:id="rIdTag1"/, `r:id="${tag1RId}"`);
+  let content = await presentationFile.async('string');
+  
+  // Extraire defaultTextStyle
+  const defaultTextStyleMatch = content.match(/<p:defaultTextStyle>[\s\S]*?<\/p:defaultTextStyle>/);
+  
+  // MAINTENANT slideMaster est TOUJOURS rId1
+  const slideMasterRId = 'rId1';
+  
+  // Reconstruire presentation.xml
+  let newContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" saveSubsetFonts="1">
+  <p:sldMasterIdLst>
+    <p:sldMasterId id="2147483648" r:id="${slideMasterRId}"/>
+  </p:sldMasterIdLst>
+  <p:sldIdLst>`;
+  
+  // Slides existantes commencent à rId2
+  for (let i = 1; i <= existingSlideCount; i++) {
+    newContent += `\n    <p:sldId id="${255 + i}" r:id="rId${i + 1}"/>`;
   }
   
-  // Trouver la section sldIdLst
-  const sldIdLstStart = updatedContent.indexOf('<p:sldIdLst>');
-  const sldIdLstEnd = updatedContent.indexOf('</p:sldIdLst>') + '</p:sldIdLst>'.length;
-  
-  if (sldIdLstStart === -1 || sldIdLstEnd === -1) {
-    throw new Error('Structure presentation.xml invalide - section sldIdLst introuvable');
-  }
-  
-  // Extraire la section existante
-  const beforeSldIdLst = updatedContent.slice(0, sldIdLstStart);
-  const existingSldIdLst = updatedContent.slice(sldIdLstStart, sldIdLstEnd);
-  const afterSldIdLst = updatedContent.slice(sldIdLstEnd);
-  
-  // Trouver le plus grand ID de slide existant
-  const slideIdMatches = existingSldIdLst.match(/id="(\d+)"/g) || [];
-  let maxSlideId = 256; // Valeur par défaut
-  
-  slideIdMatches.forEach(match => {
-    const id = parseInt(match.match(/id="(\d+)"/)?.[1] || '0');
-    if (id > maxSlideId) maxSlideId = id;
-  });
-  
-  // Créer les nouvelles entrées de slides
-  let newSlideEntries = '';
+  // Ajouter les nouvelles slides
   slideRIdMappings.forEach(mapping => {
-    const slideId = maxSlideId + mapping.slideNumber - existingSlideCount;
-    newSlideEntries += `\n    <p:sldId id="${slideId}" r:id="${mapping.rId}"/>`;
+    const slideId = 255 + mapping.slideNumber;
+    newContent += `\n    <p:sldId id="${slideId}" r:id="${mapping.rId}"/>`;
   });
   
-  // Insérer les nouvelles slides avant la fermeture de sldIdLst
-  const updatedSldIdLst = existingSldIdLst.replace('</p:sldIdLst>', newSlideEntries + '\n  </p:sldIdLst>');
+  newContent += `\n  </p:sldIdLst>
+  <p:sldSz cx="9144000" cy="6858000" type="screen4x3"/>
+  <p:notesSz cx="6858000" cy="9144000"/>`;
   
-  return beforeSldIdLst + updatedSldIdLst + afterSldIdLst;
+  // Ajouter defaultTextStyle si trouvé
+  if (defaultTextStyleMatch) {
+    newContent += '\n  ' + defaultTextStyleMatch[0];
+  }
+  
+  // Ajouter custDataLst avec le bon rId pour tag1
+  newContent += `\n  <p:custDataLst>
+    <p:tags r:id="${tag1RId}"/>
+  </p:custDataLst>
+</p:presentation>`;
+  
+  zip.file('ppt/presentation.xml', newContent);
 }
 
 // Modifier aussi updatePresentationRelsWithMappings pour retourner le rId de tag1 :
 
+// Remplacer complètement updatePresentationRelsWithMappings :
+
 function updatePresentationRelsWithMappings(
   originalContent: string,
   newSlideCount: number,
-  existingSlideCount: number,
-  hasTag1: boolean
+  existingSlideCount: number
 ): { updatedContent: string; slideRIdMappings: { slideNumber: number; rId: string }[]; tag1RId: string } {
-  // Extraire tous les rId existants
-  const existingMappings = extractExistingRIds(originalContent);
-  const existingRIds = existingMappings.map(m => m.rId);
+  // IMPORTANT : PowerPoint s'attend à cet ordre EXACT :
+  // rId1 = slideMaster
+  // rId2-N = slides  
+  // Ensuite les autres éléments
   
-  let updatedContent = originalContent;
+  const existingMappings = extractExistingRIds(originalContent);
+  
+  // Séparer les relations par type
+  const slideMasterRel = existingMappings.find(m => m.type.includes('slideMaster'));
+  const slideRelations = existingMappings.filter(m => m.type.includes('/slide') && !m.type.includes('slideMaster'));
+  const presPropsRel = existingMappings.find(m => m.type.includes('presProps'));
+  const viewPropsRel = existingMappings.find(m => m.type.includes('viewProps'));
+  const themeRel = existingMappings.find(m => m.type.includes('theme'));
+  const tableStylesRel = existingMappings.find(m => m.type.includes('tableStyles'));
+  
+  // Construire le nouveau contenu avec l'ordre standard
+  let newContent = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  newContent += '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
+  
   const slideRIdMappings: { slideNumber: number; rId: string }[] = [];
   
-  // Ajouter tag1.xml si nécessaire
-  let rIdTag1 = existingMappings.find(m => m.target.includes('tag1.xml'))?.rId;
-  
-  if (!hasTag1 && !rIdTag1) {
-    rIdTag1 = getNextAvailableRId(existingRIds);
-    existingRIds.push(rIdTag1);
-    
-    const insertPoint = updatedContent.lastIndexOf('</Relationships>');
-    const newRel = `\n  <Relationship Id="${rIdTag1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="tags/tag1.xml"/>`;
-    updatedContent = updatedContent.slice(0, insertPoint) + newRel + updatedContent.slice(insertPoint);
+  // 1. slideMaster DOIT être rId1
+  if (slideMasterRel) {
+    newContent += `<Relationship Id="rId1" Type="${slideMasterRel.type}" Target="${slideMasterRel.target}"/>`;
   }
   
-  // Ajouter les relations pour les nouvelles slides
-  let newRelationships = '';
+  // 2. Toutes les slides (existantes + nouvelles)
+  let slideRIdCounter = 2;
+  
+  // Slides existantes
+  slideRelations.forEach((rel, index) => {
+    newContent += `<Relationship Id="rId${slideRIdCounter}" Type="${rel.type}" Target="${rel.target}"/>`;
+    slideRIdCounter++;
+  });
+  
+  // Nouvelles slides
   for (let i = 1; i <= newSlideCount; i++) {
     const slideNumber = existingSlideCount + i;
-    const newRId = getNextAvailableRId(existingRIds);
-    existingRIds.push(newRId);
+    const rId = `rId${slideRIdCounter}`;
     
     slideRIdMappings.push({
       slideNumber: slideNumber,
-      rId: newRId
+      rId: rId
     });
     
-    newRelationships += `\n  <Relationship Id="${newRId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${slideNumber}.xml"/>`;
+    newContent += `<Relationship Id="${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${slideNumber}.xml"/>`;
+    slideRIdCounter++;
   }
   
-  // Insérer les nouvelles relations
-  if (newRelationships) {
-    const insertPoint = updatedContent.lastIndexOf('</Relationships>');
-    updatedContent = updatedContent.slice(0, insertPoint) + newRelationships + '\n' + updatedContent.slice(insertPoint);
+  // 3. Autres éléments dans l'ordre PowerPoint standard
+  let nextRId = slideRIdCounter;
+  
+  if (presPropsRel) {
+    newContent += `<Relationship Id="rId${nextRId}" Type="${presPropsRel.type}" Target="${presPropsRel.target}"/>`;
+    nextRId++;
   }
   
-  return { updatedContent, slideRIdMappings, tag1RId: rIdTag1 || 'rId10' };
+  if (viewPropsRel) {
+    newContent += `<Relationship Id="rId${nextRId}" Type="${viewPropsRel.type}" Target="${viewPropsRel.target}"/>`;
+    nextRId++;
+  }
+  
+  if (themeRel) {
+    newContent += `<Relationship Id="rId${nextRId}" Type="${themeRel.type}" Target="${themeRel.target}"/>`;
+    nextRId++;
+  }
+  
+  if (tableStylesRel) {
+    newContent += `<Relationship Id="rId${nextRId}" Type="${tableStylesRel.type}" Target="${tableStylesRel.target}"/>`;
+    nextRId++;
+  }
+  
+  // 4. tag1.xml à la fin
+  const tag1RId = `rId${nextRId}`;
+  newContent += `<Relationship Id="${tag1RId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="tags/tag1.xml"/>`;
+  
+  newContent += '</Relationships>';
+  
+  console.log('Nouvelle organisation des rId :');
+  console.log('- slideMaster : rId1');
+  console.log(`- slides : rId2 à rId${slideRIdCounter - 1}`);
+  console.log(`- tag1 : ${tag1RId}`);
+  
+  return { 
+    updatedContent: newContent, 
+    slideRIdMappings, 
+    tag1RId 
+  };
 }
 
 // Met à jour [Content_Types].xml avec tous les nouveaux éléments
@@ -877,12 +950,12 @@ function calculateAppXmlMetadata(
   const slideTitles: string[] = [];
   
   questions.forEach(q => {
-    // Compter les mots dans la question + "Vrai" et "Faux"
+    // Compter les mots dans la question + "Vrai" + "Faux" + duration (comme "30")
     const questionWords = q.question.trim().split(/\s+/).filter(word => word.length > 0).length;
-    totalWords += questionWords + 2; // +2 pour "Vrai" et "Faux"
+    totalWords += questionWords + 2 + 1; // +2 pour "Vrai" et "Faux", +1 pour le timer
     
-    // Paragraphes : 1 pour le titre, 2 pour les réponses
-    totalParagraphs += 3;
+    // Paragraphes : 1 pour le titre, 2 pour les réponses, 1 pour le countdown
+    totalParagraphs += 4; // Au lieu de 3
     
     // Ajouter le titre de la slide
     slideTitles.push(q.question);
@@ -956,8 +1029,8 @@ function updateSimpleFields(content: string, metadata: AppXmlMetadata): string {
 function updateHeadingPairsAndTitles(content: string, metadata: AppXmlMetadata): string {
   let updated = content;
   
-  // Extraire les titres existants si présents
-  const existingTitles: string[] = [];
+  // Extraire TOUS les titres existants
+  const allExistingTitles: string[] = [];
   const titlesMatch = content.match(/<TitlesOfParts>[\s\S]*?<\/TitlesOfParts>/);
   
   if (titlesMatch) {
@@ -966,65 +1039,82 @@ function updateHeadingPairsAndTitles(content: string, metadata: AppXmlMetadata):
     let match;
     
     while ((match = titleRegex.exec(titlesContent)) !== null) {
-      existingTitles.push(match[1]);
+      allExistingTitles.push(match[1]);
     }
   }
   
-  // Filtrer pour ne garder que les titres non-slides (polices, thèmes, etc.)
-  const nonSlideTitles = existingTitles.filter(title => 
-    !title.includes('Slide ') && 
-    !title.includes('Diapositive ') &&
-    title !== 'PowerPoint Presentation' &&
-    !metadata.slideTitles.some(st => title.includes(st.substring(0, 20)))
-  );
+  // Séparer les titres en catégories
+  const fonts: string[] = [];
+  const themes: string[] = [];
+  const existingSlideTitles: string[] = [];
   
-  // Construire la nouvelle structure HeadingPairs
-  const headingPairs = buildHeadingPairs(nonSlideTitles, metadata.slideTitles);
+  allExistingTitles.forEach(title => {
+    if (title === 'Arial' || title === 'Calibri') {
+      fonts.push(title);
+    } else if (title === 'Thème Office' || title === 'Office Theme') {
+      themes.push(title);
+    } else if (title !== '' && !metadata.slideTitles.includes(title)) {
+      // C'est un titre de slide existant (comme "Présentation PowerPoint")
+      existingSlideTitles.push(title);
+    }
+  });
   
-  // Construire la nouvelle structure TitlesOfParts
-  const titlesOfParts = buildTitlesOfParts(nonSlideTitles, metadata.slideTitles);
+  // Reconstruire les listes correctement
+  const nonSlideTitles = [...fonts, ...themes];
+  const allSlideTitles = [...existingSlideTitles, ...metadata.slideTitles];
   
+  // Pour debug
+  console.log('Fonts trouvées:', fonts);
+  console.log('Thèmes trouvés:', themes);
+  console.log('Titres slides existantes:', existingSlideTitles);
+  console.log('Nouveaux titres:', metadata.slideTitles);
+  console.log('Total titres slides:', allSlideTitles.length);
+
+   // Construire la nouvelle structure HeadingPairs
+  const headingPairs = buildHeadingPairs(nonSlideTitles, allSlideTitles);
+  
+  // Construire la nouvelle structure TitlesOfParts - CORRECTION ICI
+  const titlesOfParts = buildTitlesOfParts(fonts, themes, existingSlideTitles, metadata.slideTitles);
+    
   // Remplacer HeadingPairs
   const headingPairsRegex = /<HeadingPairs>[\s\S]*?<\/HeadingPairs>/;
   if (headingPairsRegex.test(updated)) {
     updated = updated.replace(headingPairsRegex, headingPairs);
-  } else {
-    // Insérer HeadingPairs si absent
-    const insertPoint = updated.indexOf('<TitlesOfParts>');
-    if (insertPoint > -1) {
-      updated = updated.slice(0, insertPoint) + headingPairs + '\n  ' + updated.slice(insertPoint);
-    }
   }
   
   // Remplacer TitlesOfParts
   const titlesOfPartsRegex = /<TitlesOfParts>[\s\S]*?<\/TitlesOfParts>/;
   if (titlesOfPartsRegex.test(updated)) {
     updated = updated.replace(titlesOfPartsRegex, titlesOfParts);
-  } else {
-    // Insérer TitlesOfParts si absent
-    const insertPoint = updated.indexOf('</HeadingPairs>') + '</HeadingPairs>'.length;
-    updated = updated.slice(0, insertPoint) + '\n  ' + titlesOfParts + updated.slice(insertPoint);
   }
   
   return updated;
 }
-
 // Construit la structure HeadingPairs correcte
-function buildHeadingPairs(nonSlideTitles: string[], slideTitles: string[]): string {
+function buildHeadingPairs(nonSlideTitles: string[], allSlideTitles: string[]): string {
   const pairs: string[] = [];
   
-  // Ajouter les paires pour les éléments non-slides (polices, thèmes, etc.)
-  if (nonSlideTitles.some(t => t.includes('Police') || t.includes('Font'))) {
+  // Compter les polices (si présentes)
+  const fontCount = nonSlideTitles.filter(t => 
+    t.includes('Arial') || t.includes('Calibri') || t.includes('Font') || t.includes('Police')
+  ).length;
+  
+  if (fontCount > 0) {
     pairs.push(`
       <vt:variant>
         <vt:lpstr>Polices utilisées</vt:lpstr>
       </vt:variant>
       <vt:variant>
-        <vt:i4>2</vt:i4>
+        <vt:i4>${fontCount}</vt:i4>
       </vt:variant>`);
   }
   
-  if (nonSlideTitles.some(t => t.includes('Thème') || t.includes('Theme'))) {
+  // Compter les thèmes (toujours 1 s'il y en a)
+  const hasTheme = nonSlideTitles.some(t => 
+    t.includes('Thème') || t.includes('Theme') || t === 'Thème Office'
+  );
+  
+  if (hasTheme) {
     pairs.push(`
       <vt:variant>
         <vt:lpstr>Thème</vt:lpstr>
@@ -1035,17 +1125,17 @@ function buildHeadingPairs(nonSlideTitles: string[], slideTitles: string[]): str
   }
   
   // Ajouter la paire pour les titres de diapositives
-  if (slideTitles.length > 0) {
+  if (allSlideTitles.length > 0) {
     pairs.push(`
       <vt:variant>
         <vt:lpstr>Titres des diapositives</vt:lpstr>
       </vt:variant>
       <vt:variant>
-        <vt:i4>${slideTitles.length}</vt:i4>
+        <vt:i4>${allSlideTitles.length}</vt:i4>
       </vt:variant>`);
   }
   
-  const vectorSize = pairs.length * 2; // Chaque paire compte pour 2 éléments
+  const vectorSize = pairs.length * 2;
   
   return `<HeadingPairs>
     <vt:vector size="${vectorSize}" baseType="variant">${pairs.join('')}
@@ -1054,23 +1144,25 @@ function buildHeadingPairs(nonSlideTitles: string[], slideTitles: string[]): str
 }
 
 // Construit la structure TitlesOfParts correcte
-function buildTitlesOfParts(nonSlideTitles: string[], slideTitles: string[]): string {
+function buildTitlesOfParts(
+  fonts: string[], 
+  themes: string[], 
+  existingSlideTitles: string[], 
+  newSlideTitles: string[]
+): string {
   const allTitles: string[] = [];
   
-  // Ajouter d'abord les titres non-slides dans l'ordre approprié
-  if (nonSlideTitles.some(t => t.includes('Arial'))) {
-    allTitles.push('Arial');
-  }
-  if (nonSlideTitles.some(t => t.includes('Calibri'))) {
-    allTitles.push('Calibri');
-  }
-  if (nonSlideTitles.some(t => t.includes('Thème'))) {
-    allTitles.push('Thème Office');
-  }
+  // 1. Ajouter les polices
+  fonts.forEach(font => allTitles.push(font));
   
-  // Ajouter les titres des slides
-  slideTitles.forEach(title => {
-    // Tronquer les titres trop longs
+  // 2. Ajouter les thèmes
+  themes.forEach(theme => allTitles.push(theme));
+  
+  // 3. Ajouter les titres des slides existantes
+  existingSlideTitles.forEach(title => allTitles.push(title));
+  
+  // 4. Ajouter les titres des nouvelles slides
+  newSlideTitles.forEach(title => {
     const truncatedTitle = title.length > 100 ? title.substring(0, 97) + '...' : title;
     allTitles.push(escapeXml(truncatedTitle));
   });
@@ -1087,8 +1179,14 @@ function buildTitlesOfParts(nonSlideTitles: string[], slideTitles: string[]): st
 
 // Crée un nouveau fichier app.xml si nécessaire
 function createNewAppXml(zip: JSZip, metadata: AppXmlMetadata): void {
-  const headingPairs = buildHeadingPairs(['Arial', 'Calibri', 'Thème Office'], metadata.slideTitles);
-  const titlesOfParts = buildTitlesOfParts(['Arial', 'Calibri', 'Thème Office'], metadata.slideTitles);
+  // Valeurs par défaut pour un nouveau fichier
+  const defaultFonts = ['Arial', 'Calibri'];
+  const defaultThemes = ['Thème Office'];
+  const existingSlideTitles: string[] = []; // Pas de slides existantes dans un nouveau fichier
+  
+  const nonSlideTitles = [...defaultFonts, ...defaultThemes];
+  const headingPairs = buildHeadingPairs(nonSlideTitles, metadata.slideTitles);
+  const titlesOfParts = buildTitlesOfParts(defaultFonts, defaultThemes, existingSlideTitles, metadata.slideTitles);
   
   const appXmlContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
@@ -1241,31 +1339,29 @@ export async function generatePPTX(
       );
       outputZip.file('[Content_Types].xml', updatedContentTypes);
     }
-    
-    // Mettre à jour presentation.xml.rels
+    console.log('Avant mise à jour presentation.xml.rels:');
+    console.log('Tag1 existe:', hasExistingTag1);
+
     const presentationRelsFile = outputZip.file('ppt/_rels/presentation.xml.rels');
     if (presentationRelsFile) {
       const presentationRelsContent = await presentationRelsFile.async('string');
+      
+      // IMPORTANT : Toujours passer true pour needsTag1 si on crée des slides OMBEA
       const { updatedContent: updatedPresentationRels, slideRIdMappings, tag1RId } = updatePresentationRelsWithMappings(
         presentationRelsContent,
         questions.length,
         existingSlideCount,
-        !hasExistingTag1
       );
+      
       outputZip.file('ppt/_rels/presentation.xml.rels', updatedPresentationRels);
       
       // Mettre à jour presentation.xml avec les mappings corrects et le bon rId pour tag1
-      const presentationFile = outputZip.file('ppt/presentation.xml');
-      if (presentationFile) {
-        const presentationContent = await presentationFile.async('string');
-        const updatedPresentation = updatePresentationXmlWithSlides(
-          presentationContent,
-          existingSlideCount,
-          slideRIdMappings,
-          tag1RId // Passer le vrai rId de tag1
-        );
-        outputZip.file('ppt/presentation.xml', updatedPresentation);
-      }
+      await rebuildPresentationXml(
+        outputZip,
+        slideRIdMappings,
+        tag1RId,
+        existingSlideCount
+      );
     }
     
     // Mettre à jour core.xml
