@@ -44,16 +44,25 @@ function generateGUID(): string {
 
 // Fonction utilitaire pour échapper le XML
 function escapeXml(unsafe: string): string {
-  return unsafe.replace(/[<>&'"]/g, function (c: string): string {
-    switch (c) {
-      case '<': return '&lt;';
-      case '>': return '&gt;';
-      case '&': return '&amp;';
-      case '"': return '&quot;';
-      case "'": return '&apos;';
-      default: return c;
-    }
-  });
+  if (!unsafe) return ''; // Gérer les chaînes vides ou null
+
+  // Supprimer les caractères de contrôle interdits en XML 1.0 (sauf \n, \r, \t)
+  let cleaned = unsafe.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+
+  // Journaliser si des caractères suspects sont trouvés
+  if (/[:\-]|\-\-/.test(cleaned)) {
+    console.warn(`Caractères suspects détectés dans la chaîne: ${cleaned}`);
+  }
+
+  // Échapper les caractères réservés XML
+  return cleaned
+    .replace(/&/g, '&amp;')  // Important : d'abord &
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+    .replace(/:/g, '&#58;') // facultatif si ":" pose souci dans du contenu textuel
+    .replace(/--/g, '—');   // remplacer les doubles tirets
 }
 
 // Compte le nombre de slides existantes dans le modèle
@@ -65,26 +74,6 @@ function countExistingSlides(zip: JSZip): number {
     }
   });
   return count;
-}
-
-// Compte le nombre de tags existants
-function countExistingTags(zip: JSZip): number {
-  let count = 0;
-  const tagsFolder = zip.folder('ppt/tags');
-  if (tagsFolder) {
-    tagsFolder.forEach((relativePath) => {
-      if (relativePath.match(/^tag\d+\.xml$/)) {
-        count++;
-      }
-    });
-  }
-  return count;
-}
-
-// Vérifie si tag1.xml existe déjà
-async function checkTag1Exists(zip: JSZip): Promise<boolean> {
-  const tag1 = zip.file('ppt/tags/tag1.xml');
-  return tag1 !== null;
 }
 
 // Validation des données d'entrée
@@ -451,9 +440,6 @@ ${slideComment}
           </p:cNvSpPr>
           <p:nvPr>
             <p:ph type="title"/>
-            <p:custDataLst>
-              <p:tags r:id="rId2"/>
-            </p:custDataLst>
           </p:nvPr>
         </p:nvSpPr>
         <p:spPr/>
@@ -569,37 +555,19 @@ ${slideComment}
 </p:sld>`;
 }
 // ========== GESTION DES TAGS ==========
-
-// Génère le tag1.xml global pour OMBEA (toujours tag1)
-function createGlobalTag(): TagInfo {
-  return {
-    tagNumber: 1,
-    fileName: 'tag1.xml',
-    content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:tagLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-  <p:tag name="OR_PRESENTATION" val="True"/>
-</p:tagLst>`
-  };
-}
-
 // Calcule le numéro de base pour les tags d'une slide
-function calculateBaseTagNumber(slideNumber: number, isFirstSlideEver: boolean): number {
-  // Si c'est la première slide du document, les tags commencent à 2 (après tag1 global)
-  // Sinon, chaque slide a 4 tags, donc : 2 + (slideNumber - 1) * 4
-  if (isFirstSlideEver) {
-    return 2; // tag2, tag3, tag4, tag5 pour la première slide
-  }
-  return 2 + (slideNumber - 1) * 4;
+function calculateBaseTagNumber(slideNumber: number): number {
+  // Chaque slide utilise 4 tags, commençant à tag1 pour la première slide
+  return 1 + (slideNumber - 1) * 4; // tag1, tag2, tag3, tag4 pour slide 1; tag5, tag6, tag7, tag8 pour slide 2, etc.
 }
 
 // Génère les 4 fichiers tags pour une slide OMBEA
 function createSlideTagFiles(
-  slideNumber: number, 
-  isFirstSlideEver: boolean,
+  slideNumber: number,
   correctAnswer: boolean, 
   duration: number = 30
 ): TagInfo[] {
-  const baseTagNumber = calculateBaseTagNumber(slideNumber, isFirstSlideEver);
+  const baseTagNumber = calculateBaseTagNumber(slideNumber);
   const slideGuid = generateGUID();
   const points = correctAnswer ? "1.00,0.00" : "0.00,1.00";
   
@@ -672,12 +640,10 @@ function createSlideTagFiles(
 
 // Génère le fichier .rels pour une slide OMBEA avec les bons tags
 function createSlideRelsXml(
-  slideNumber: number, 
-  isFirstSlideEver: boolean,
+  slideNumber: number,
   layoutFileName: string
 ): string {
-  const baseTagNumber = calculateBaseTagNumber(slideNumber, isFirstSlideEver);
-  
+  const baseTagNumber = calculateBaseTagNumber(slideNumber); 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagNumber}.xml"/>
@@ -738,7 +704,6 @@ function getNextAvailableRId(existingRIds: string[]): string {
 async function rebuildPresentationXml(
   zip: JSZip,
   slideRIdMappings: { slideNumber: number; rId: string }[],
-  tag1RId: string,
   existingSlideCount: number
 ): Promise<void> {
   const presentationFile = zip.file('ppt/presentation.xml');
@@ -780,11 +745,7 @@ async function rebuildPresentationXml(
     newContent += '\n  ' + defaultTextStyleMatch[0];
   }
   
-  // Ajouter custDataLst avec le bon rId pour tag1
-  newContent += `\n  <p:custDataLst>
-    <p:tags r:id="${tag1RId}"/>
-  </p:custDataLst>
-</p:presentation>`;
+  newContent += `\n</p:presentation>`;
   
   zip.file('ppt/presentation.xml', newContent);
 }
@@ -797,7 +758,7 @@ function updatePresentationRelsWithMappings(
   originalContent: string,
   newSlideCount: number,
   existingSlideCount: number
-): { updatedContent: string; slideRIdMappings: { slideNumber: number; rId: string }[]; tag1RId: string } {
+): { updatedContent: string; slideRIdMappings: { slideNumber: number; rId: string }[] } {
   // IMPORTANT : PowerPoint s'attend à cet ordre EXACT :
   // rId1 = slideMaster
   // rId2-N = slides  
@@ -870,21 +831,15 @@ function updatePresentationRelsWithMappings(
     nextRId++;
   }
   
-  // 4. tag1.xml à la fin
-  const tag1RId = `rId${nextRId}`;
-  newContent += `<Relationship Id="${tag1RId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="tags/tag1.xml"/>`;
-  
   newContent += '</Relationships>';
   
   console.log('Nouvelle organisation des rId :');
   console.log('- slideMaster : rId1');
   console.log(`- slides : rId2 à rId${slideRIdCounter - 1}`);
-  console.log(`- tag1 : ${tag1RId}`);
   
   return { 
     updatedContent: newContent, 
-    slideRIdMappings, 
-    tag1RId 
+    slideRIdMappings 
   };
 }
 
@@ -1248,25 +1203,17 @@ export async function generatePPTX(
   try {
     console.log('Validation des données...');
     validateQuestions(questions);
-    
+
     console.log('Chargement du modèle...');
-    // Charger le modèle PowerPoint
     const templateZip = await JSZip.loadAsync(templateFile);
-    
-    // Compter les slides et tags existants
+
     const existingSlideCount = countExistingSlides(templateZip);
-    const existingTagCount = countExistingTags(templateZip);
-    const hasExistingTag1 = await checkTag1Exists(templateZip);
-    
     console.log(`Slides existantes dans le modèle: ${existingSlideCount}`);
-    console.log(`Tags existants dans le modèle: ${existingTagCount}`);
-    console.log(`Tag1 existe: ${hasExistingTag1}`);
     console.log(`Nouvelles slides à créer: ${questions.length}`);
-    
-    // Créer une copie du modèle
+
+    let totalTagsCreated = 0;
+
     const outputZip = new JSZip();
-    
-    // Copier tout le contenu du modèle
     const copyPromises: Promise<void>[] = [];
     templateZip.forEach((relativePath, file) => {
       if (!file.dir) {
@@ -1276,102 +1223,73 @@ export async function generatePPTX(
         copyPromises.push(promise);
       }
     });
-    
     await Promise.all(copyPromises);
     console.log('Modèle copié');
-    
-    // S'assurer qu'un layout OMBEA existe
+
     const { layoutFileName, layoutRId } = await ensureOmbeaSlideLayoutExists(outputZip);
     console.log(`Layout OMBEA: ${layoutFileName} (${layoutRId})`);
-    
-    // Créer le dossier tags s'il n'existe pas
+
     outputZip.folder('ppt/tags');
-    
-    // Créer le tag global OMBEA si pas déjà présent
-    let totalTagsCreated = existingTagCount;
-    if (!hasExistingTag1) {
-      const globalTag = createGlobalTag();
-      outputZip.file(`ppt/tags/${globalTag.fileName}`, globalTag.content);
-      totalTagsCreated = 1; // Reset à 1 car on commence avec tag1
-      console.log('Tag global OMBEA créé');
-    }
-    
-    // Créer les nouvelles slides OMBEA
+
     console.log('Création des nouvelles slides OMBEA...');
     for (let i = 0; i < questions.length; i++) {
       const slideNumber = existingSlideCount + i + 1;
       const question = questions[i];
       const correctAnswer = question.correctAnswer !== undefined ? question.correctAnswer : false;
       const duration = question.duration || 30;
-      
-      // Créer le fichier slide XML
+
       const slideXml = createSlideXml(question.question, slideNumber, duration);
       outputZip.file(`ppt/slides/slide${slideNumber}.xml`, slideXml);
-      
-      // Créer le fichier .rels pour la slide
-      const isFirstSlideEver = (existingSlideCount === 0 && i === 0);
-      const slideRelsXml = createSlideRelsXml(i + 1, isFirstSlideEver, layoutFileName);
+
+      const slideRelsXml = createSlideRelsXml(i + 1, layoutFileName);
       outputZip.file(`ppt/slides/_rels/slide${slideNumber}.xml.rels`, slideRelsXml);
-      
-      // Créer les fichiers tags pour cette slide
-      const tags = createSlideTagFiles(i + 1, isFirstSlideEver, correctAnswer, duration);
+
+      const tags = createSlideTagFiles(i + 1, correctAnswer, duration);
       tags.forEach(tag => {
         outputZip.file(`ppt/tags/${tag.fileName}`, tag.content);
         totalTagsCreated = Math.max(totalTagsCreated, tag.tagNumber);
       });
-      
+
       console.log(`Slide OMBEA ${slideNumber} créée: ${question.question.substring(0, 50)}...`);
     }
-    
+
     console.log(`Total des tags créés: ${totalTagsCreated}`);
-    
-    // Mettre à jour [Content_Types].xml
-    console.log('Mise à jour des métadonnées...');
+
     const contentTypesFile = outputZip.file('[Content_Types].xml');
     if (contentTypesFile) {
       const contentTypesContent = await contentTypesFile.async('string');
       const updatedContentTypes = updateContentTypesComplete(
-        contentTypesContent, 
-        questions.length, 
+        contentTypesContent,
+        questions.length,
         existingSlideCount,
         layoutFileName,
         totalTagsCreated
       );
       outputZip.file('[Content_Types].xml', updatedContentTypes);
     }
-    console.log('Avant mise à jour presentation.xml.rels:');
-    console.log('Tag1 existe:', hasExistingTag1);
 
     const presentationRelsFile = outputZip.file('ppt/_rels/presentation.xml.rels');
     if (presentationRelsFile) {
       const presentationRelsContent = await presentationRelsFile.async('string');
-      
-      // IMPORTANT : Toujours passer true pour needsTag1 si on crée des slides OMBEA
-      const { updatedContent: updatedPresentationRels, slideRIdMappings, tag1RId } = updatePresentationRelsWithMappings(
+      const { updatedContent: updatedPresentationRels, slideRIdMappings } = updatePresentationRelsWithMappings(
         presentationRelsContent,
         questions.length,
-        existingSlideCount,
+        existingSlideCount
       );
-      
+
       outputZip.file('ppt/_rels/presentation.xml.rels', updatedPresentationRels);
-      
-      // Mettre à jour presentation.xml avec les mappings corrects et le bon rId pour tag1
+
       await rebuildPresentationXml(
         outputZip,
         slideRIdMappings,
-        tag1RId,
         existingSlideCount
       );
     }
-    
-    // Mettre à jour core.xml
+
     await updateCoreXml(outputZip, questions.length);
-    
-    // Calculer et mettre à jour app.xml
     const appMetadata = calculateAppXmlMetadata(existingSlideCount, questions);
     await updateAppXml(outputZip, appMetadata);
-    
-    // Générer le fichier final
+
     console.log('Génération du fichier final...');
     const outputBlob = await outputZip.generateAsync({
       type: 'blob',
@@ -1379,10 +1297,10 @@ export async function generatePPTX(
       compression: 'DEFLATE',
       compressionOptions: { level: 6 }
     });
-    
+
     const fileName = options.fileName || `Questions_OMBEA_${new Date().toISOString().slice(0, 10)}.pptx`;
     saveAs(outputBlob, fileName);
-    
+
     console.log(`Fichier OMBEA généré avec succès: ${fileName}`);
     console.log(`Total des slides: ${existingSlideCount + questions.length}`);
     console.log(`Total des tags: ${totalTagsCreated}`);
@@ -1390,19 +1308,6 @@ export async function generatePPTX(
     console.error('Erreur lors de la génération:', error);
     throw new Error(`Génération échouée: ${error.message}`);
   }
-}
-
-// ========== FONCTIONS UTILITAIRES POUR TEST ==========
-
-// Fonction utilitaire pour tester avec des données d'exemple
-export function createTestQuestions(): Question[] {
-  return [
-    { question: "Paris est-elle la capitale de la France ?", correctAnswer: true, duration: 30 },
-    { question: "Le soleil tourne-t-il autour de la Terre ?", correctAnswer: false, duration: 30 },
-    { question: "L'eau bout-elle à 100°C au niveau de la mer ?", correctAnswer: true, duration: 45 },
-    { question: "JavaScript est-il un langage de programmation ?", correctAnswer: true, duration: 20 },
-    { question: "Les pingouins vivent-ils au pôle Nord ?", correctAnswer: false, duration: 30 }
-  ];
 }
 
 // Exemple d'utilisation avec les nouvelles options
