@@ -125,15 +125,8 @@ async function findNextAvailableSlideLayoutId(zip: JSZip): Promise<{ layoutId: n
   // Trouver le prochain rId disponible
   let nextRId = getNextAvailableRId(existingRIds);
   
-  // NOUVEAU : S'assurer que ce n'est pas rId12 (réservé pour theme)
-  if (nextRId === 'rId12') {
-    console.log('rId12 détecté, saut à rId13');
-    nextRId = 'rId13';
-    // Vérifier que rId13 n'est pas déjà pris
-    if (existingRIds.includes('rId13')) {
-      nextRId = getNextAvailableRId([...existingRIds, 'rId12', 'rId13']);
-    }
-  }
+  // SUPPRESSION de la protection rId12 - laisser PowerPoint gérer naturellement
+  // Les slideLayout doivent utiliser leur rId correspondant quand possible
   
   console.log(`Prochain layout: slideLayout${nextLayoutNum}, rId: ${nextRId}`);
   console.log(`rIds existants dans slideMaster1.xml.rels:`, existingRIds);
@@ -386,7 +379,6 @@ async function updateSlideMasterForNewLayout(zip: JSZip, layoutId: number, rId: 
     }
   }
 }
-
 // Mettre à jour [Content_Types].xml pour le nouveau layout
 async function updateContentTypesForNewLayout(zip: JSZip, layoutFileName: string): Promise<void> {
   const contentTypesFile = zip.file('[Content_Types].xml');
@@ -412,15 +404,24 @@ async function updateContentTypesForNewLayout(zip: JSZip, layoutFileName: string
 
 // Génère le XML d'une nouvelle slide OMBEA
 function createSlideXml(question: string, slideNumber: number, duration: number = 30): string {
-  // Utiliser slideNumber pour éviter l'avertissement
+  // Calculer des IDs uniques basés sur le numéro de slide
+  // Pour éviter les conflits, on utilise slideNumber * 10 + position
+  const baseId = slideNumber * 10;
+  const grpId = baseId + 1;
+  const titleId = baseId + 2;
+  const bodyId = baseId + 3;
+  const countdownId = baseId + 4;
+  
+  // Utiliser slideNumber pour le commentaire
   const slideComment = `<!-- Slide ${slideNumber} -->`;
+  
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 ${slideComment}
 <p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
   <p:cSld>
     <p:spTree>
       <p:nvGrpSpPr>
-        <p:cNvPr id="1" name=""/>
+        <p:cNvPr id="${grpId}" name=""/>
         <p:cNvGrpSpPr/>
         <p:nvPr/>
       </p:nvGrpSpPr>
@@ -434,7 +435,7 @@ ${slideComment}
       </p:grpSpPr>
       <p:sp>
         <p:nvSpPr>
-          <p:cNvPr id="2" name="Titre 1"/>
+          <p:cNvPr id="${titleId}" name="Titre ${slideNumber}"/>
           <p:cNvSpPr>
             <a:spLocks noGrp="1"/>
           </p:cNvSpPr>
@@ -457,7 +458,7 @@ ${slideComment}
       </p:sp>
       <p:sp>
         <p:nvSpPr>
-          <p:cNvPr id="3" name="Espace réservé du texte 2"/>
+          <p:cNvPr id="${bodyId}" name="Espace réservé du texte ${slideNumber}"/>
           <p:cNvSpPr>
             <a:spLocks noGrp="1"/>
           </p:cNvSpPr>
@@ -500,7 +501,7 @@ ${slideComment}
       </p:sp>
       <p:sp>
         <p:nvSpPr>
-          <p:cNvPr id="4" name="OMBEA Countdown"/>
+          <p:cNvPr id="${countdownId}" name="OMBEA Countdown ${slideNumber}"/>
           <p:cNvSpPr txBox="1"/>
           <p:nvPr>
             <p:custDataLst>
@@ -1201,12 +1202,27 @@ export async function generatePPTX(
   options: GenerationOptions = {}
 ): Promise<void> {
   try {
+    // DEBUG: Générer un ID unique pour cette exécution
+    const executionId = Date.now();
+    console.log(`\n=== DÉBUT GÉNÉRATION ${executionId} ===`);
+    
+    // DEBUG: Afficher la taille du template
+    console.log(`Template: ${templateFile.name}, taille: ${templateFile.size} octets`);
+    
+    // DEBUG: Calculer un hash simple des questions
+    const questionsHash = questions.map(q => q.question).join('|');
+    console.log(`Hash questions: ${questionsHash.substring(0, 50)}...`);
+    
     console.log('Validation des données...');
     validateQuestions(questions);
 
     console.log('Chargement du modèle...');
     const templateZip = await JSZip.loadAsync(templateFile);
-
+    
+    // DEBUG: Vérifier l'intégrité du ZIP chargé
+    let fileCount = 0;
+    templateZip.forEach(() => fileCount++);
+    console.log(`Fichiers dans le template: ${fileCount}`);
     const existingSlideCount = countExistingSlides(templateZip);
     console.log(`Slides existantes dans le modèle: ${existingSlideCount}`);
     console.log(`Nouvelles slides à créer: ${questions.length}`);
@@ -1291,25 +1307,54 @@ export async function generatePPTX(
     await updateAppXml(outputZip, appMetadata);
 
     console.log('Génération du fichier final...');
-    const outputBlob = await outputZip.generateAsync({
-      type: 'blob',
-      mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      compression: 'DEFLATE',
-      compressionOptions: { level: 6 }
-    });
+const outputBlob = await outputZip.generateAsync({
+  type: 'blob',
+  mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  compression: 'DEFLATE',
+  compressionOptions: { level: 3 }  // Réduire le niveau de compression de 6 à 3
+});
 
-    const fileName = options.fileName || `Questions_OMBEA_${new Date().toISOString().slice(0, 10)}.pptx`;
+const fileName = options.fileName || `Questions_OMBEA_${new Date().toISOString().slice(0, 10)}.pptx`;
     saveAs(outputBlob, fileName);
 
     console.log(`Fichier OMBEA généré avec succès: ${fileName}`);
     console.log(`Total des slides: ${existingSlideCount + questions.length}`);
     console.log(`Total des tags: ${totalTagsCreated}`);
+    console.log(`=== FIN GÉNÉRATION ${executionId} - SUCCÈS ===`);
+    
   } catch (error: any) {
-    console.error('Erreur lors de la génération:', error);
-    throw new Error(`Génération échouée: ${error.message}`);
+    console.error(`=== ERREUR GÉNÉRATION ===`);
+    console.error('Stack trace complet:', error.stack);
+    throw error;
   }
 }
-
+export async function testConsistency(templateFile: File, questions: Question[]): Promise<void> {
+  console.log('=== TEST DE COHÉRENCE ===');
+  const results = [];
+  
+  for (let i = 0; i < 5; i++) {
+    console.log(`\nTest ${i + 1}/5...`);
+    try {
+      // Créer une copie du template pour éviter toute modification
+      const templateCopy = new File([await templateFile.arrayBuffer()], templateFile.name, {
+        type: templateFile.type
+      });
+      
+      await generatePPTX(templateCopy, questions, {
+        fileName: `Test_${i + 1}.pptx`
+      });
+      
+      results.push('SUCCÈS');
+    } catch (error) {
+      results.push('ÉCHEC: ');
+    }
+  }
+  
+  console.log('\n=== RÉSULTATS ===');
+  results.forEach((result, i) => {
+    console.log(`Test ${i + 1}: ${result}`);
+  });
+}
 // Exemple d'utilisation avec les nouvelles options
 export const handleGeneratePPTX = async (templateFile: File, questions: Question[]) => {
   try {
