@@ -789,7 +789,7 @@ function updatePresentationRelsWithMappings(
   let slideRIdCounter = 2;
   
   // Slides existantes
-  slideRelations.forEach((rel, index) => {
+  slideRelations.forEach((rel) => {
     newContent += `<Relationship Id="rId${slideRIdCounter}" Type="${rel.type}" Target="${rel.target}"/>`;
     slideRIdCounter++;
   });
@@ -1178,7 +1178,7 @@ async function updateCoreXml(zip: JSZip, slideCount: number): Promise<void> {
     let content = await coreFile.async('string');
     
     // Mettre à jour le titre avec gestion du pluriel
-    const title = `Quiz OMBEA - ${slideCount} question${slideCount > 1 ? 's' : ''}`;
+    const title = `Quiz OMBEA ${slideCount} question${slideCount > 1 ? 's' : ''}`;
     content = content.replace(/<dc:title>.*?<\/dc:title>/, `<dc:title>${escapeXml(title)}</dc:title>`);
     
     // Mettre à jour la date de modification
