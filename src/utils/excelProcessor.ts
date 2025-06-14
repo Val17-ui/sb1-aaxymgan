@@ -1,77 +1,123 @@
 import ExcelJS from 'exceljs';
-
-interface Question {
-  question: string;
-  correctAnswer: boolean; // true for "Vrai", false for "Faux"
-  imagePath?: string;
-  duration?: number;
-}
+import { Question } from '../types';
 
 export async function processExcel(file: File): Promise<Question[]> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(arrayBuffer);
-      
-      const worksheet = workbook.getWorksheet(1); // Get the first worksheet
-      
-      if (!worksheet) {
-        throw new Error('No worksheet found in the Excel file');
-      }
-      
-      const questions: Question[] = [];
-      
-      // Skip header row if it exists
-      let startRow = 1;
-      const firstRow = worksheet.getRow(1);
-      const firstCellValue = firstRow.getCell(1).value?.toString().toLowerCase();
-      
-      if (firstCellValue && (
-        firstCellValue.includes('question') || 
-        firstCellValue.includes('réponse') || 
-        firstCellValue.includes('image')
-      )) {
-        startRow = 2;
-      }
-      
-      // Process each row
-      worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber >= startRow) {
-          const questionText = row.getCell(1).value?.toString() || '';
-          
-          if (!questionText.trim()) {
-            return; // Skip empty rows
-          }
-          
-          // Get correct answer (assuming "Vrai" or "Faux" in column 2)
-          const answerText = row.getCell(2).value?.toString().toLowerCase() || '';
-          const correctAnswer = answerText.includes('vrai') || answerText === '1' || answerText === 'true';
-          
-          // Optional: Get image path if available (column 3)
-          const imagePath = row.getCell(3).value?.toString() || undefined;
-          
-          // Optional: Get duration if available (column 4)
-          const durationCell = row.getCell(4).value;
-          const duration = typeof durationCell === 'number' ? durationCell : undefined;
-          
-          questions.push({
-            question: questionText,
-            correctAnswer,
-            imagePath: imagePath?.trim() || undefined,
-            duration
-          });
-        }
-      });
-      
-      if (questions.length === 0) {
-        throw new Error('No valid questions found in the Excel file');
-      }
-      
-      resolve(questions);
-    } catch (error) {
-      console.error('Error processing Excel file:', error);
-      reject(error);
+  const workbook = new ExcelJS.Workbook();
+  const arrayBuffer = await file.arrayBuffer();
+  
+  await workbook.xlsx.load(arrayBuffer);
+  
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) {
+    throw new Error('Aucune feuille de calcul trouvée dans le fichier Excel');
+  }
+
+  const questions: Question[] = [];
+  
+  // Parcourir les lignes (en commençant à 2 pour ignorer l'en-tête)
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return; // Ignorer l'en-tête
+    
+    // Extraire les valeurs des cellules
+    const question = row.getCell(1).value?.toString() || '';
+    const answer = row.getCell(2).value?.toString() || '';
+    const durationValue = row.getCell(3).value;
+    const duration = durationValue ? parseInt(durationValue.toString()) : undefined;
+    const imageUrl = row.getCell(4).value?.toString() || undefined;
+    
+    // Valider que c'est une question valide
+    if (!question.trim()) {
+      console.warn(`Ligne ${rowNumber} ignorée : pas de question`);
+      return;
     }
+    
+    // Déterminer la bonne réponse (Vrai/Faux)
+    const correctAnswer = answer === 'Vrai' || 
+                         answer === 'VRAI' || 
+                         answer === 'vrai' || 
+                         answer === 'True' || 
+                         answer === 'TRUE' || 
+                         answer === '1';
+    
+    questions.push({
+      question: question.trim(),
+      correctAnswer,
+      duration: duration || undefined,
+      imageUrl: imageUrl?.trim() || undefined
+    });
   });
+  
+  console.log(`${questions.length} questions extraites du fichier Excel`);
+  return questions;
+}
+
+// Version alternative qui utilise les en-têtes de colonnes
+export async function processExcelWithHeaders(file: File): Promise<Question[]> {
+  const workbook = new ExcelJS.Workbook();
+  const arrayBuffer = await file.arrayBuffer();
+  
+  await workbook.xlsx.load(arrayBuffer);
+  
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) {
+    throw new Error('Aucune feuille de calcul trouvée dans le fichier Excel');
+  }
+
+  const questions: Question[] = [];
+  
+  // Obtenir les en-têtes de la première ligne
+  const headerRow = worksheet.getRow(1);
+  const headers: { [key: string]: number } = {};
+  
+  headerRow.eachCell((cell, colNumber) => {
+    const header = cell.value?.toString().toLowerCase() || '';
+    headers[header] = colNumber;
+  });
+  
+  // Trouver les colonnes par leurs noms possibles
+  const questionCol = headers['question'] || headers['questions'] || 1;
+  const answerCol = headers['réponse'] || headers['réponse correcte'] || headers['answer'] || 2;
+  const durationCol = headers['durée'] || headers['temps'] || headers['duration'] || 3;
+  const imageCol = headers['image'] || headers['image url'] || headers['url image'] || headers['lien image'] || 4;
+  
+  // Parcourir les lignes de données
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return; // Ignorer l'en-tête
+    
+    const question = row.getCell(questionCol).value?.toString() || '';
+    const answer = row.getCell(answerCol).value?.toString() || '';
+    const duration = row.getCell(durationCol).value;
+    const imageUrl = row.getCell(imageCol).value?.toString();
+    
+    // Valider que c'est une question valide
+    if (!question.trim()) {
+      console.warn(`Ligne ${rowNumber} ignorée : pas de question`);
+      return;
+    }
+    
+    // Déterminer la bonne réponse
+    const correctAnswer = answer === 'Vrai' || 
+                         answer === 'VRAI' || 
+                         answer === 'vrai' || 
+                         answer === 'True' || 
+                         answer === 'TRUE' || 
+                         answer === '1';
+    
+    // Parser la durée
+    let parsedDuration: number | undefined;
+    if (duration) {
+      const durationNum = typeof duration === 'number' ? duration : parseInt(duration.toString());
+      parsedDuration = isNaN(durationNum) ? undefined : durationNum;
+    }
+    
+    questions.push({
+      question: question.trim(),
+      correctAnswer,
+      duration: parsedDuration,
+      imageUrl: imageUrl?.trim() || undefined
+    });
+  });
+  
+  console.log(`${questions.length} questions extraites du fichier Excel`);
+  return questions;
 }

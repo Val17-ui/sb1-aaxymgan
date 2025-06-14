@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FileUp, FileDown, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { FileUp, FileDown, Clock, CheckCircle, AlertCircle, Loader2, Cloud } from 'lucide-react';
 import { processExcel } from './utils/excelProcessor';
 import { generatePPTX } from './utils/pptxGenerator';
 import Header from './components/Header';
@@ -56,7 +56,14 @@ function App() {
     try {
       const result = await processExcel(excelFile);
       setQuestions(result);
-      setStatus({ message: `Successfully processed ${result.length} questions.`, type: 'success' });
+      
+      // Compter les questions avec images
+      const questionsWithImages = result.filter(q => q.imageUrl).length;
+      const message = questionsWithImages > 0
+        ? `Successfully processed ${result.length} questions (${questionsWithImages} with images).`
+        : `Successfully processed ${result.length} questions.`;
+      
+      setStatus({ message, type: 'success' });
     } catch (error) {
       console.error('Error processing Excel:', error);
       setStatus({ message: `Error processing Excel: ${error instanceof Error ? error.message : 'Unknown error'}`, type: 'error' });
@@ -70,18 +77,32 @@ function App() {
       setStatus({ message: 'Please process the Excel file first.', type: 'error' });
       return;
     }
-
+  
     setProcessing(true);
     setStatus({ message: 'Generating PPTX file...', type: 'info' });
-
+  
     try {
-      await generatePPTX(templateFile, questions, defaultDuration);
+      // CORRECTION : generatePPTX accepte maintenant File | null
+      // Pas besoin de vérifier si templateFile est null, la fonction le gère
+      await generatePPTX(templateFile, questions, { defaultDuration });
       setStatus({ message: 'PPTX file generated successfully!', type: 'success' });
     } catch (error) {
       console.error('Error generating PPTX:', error);
       setStatus({ message: `Error generating PPTX: ${error instanceof Error ? error.message : 'Unknown error'}`, type: 'error' });
     } finally {
       setProcessing(false);
+    }
+  };
+
+  // Fonction pour vérifier si une URL d'image est valide
+  const isValidImageUrl = (url: string | undefined): boolean => {
+    if (!url) return false;
+    try {
+      const urlObj = new URL(url);
+      // Accepter http, https et même data: URLs
+      return ['http:', 'https:', 'data:'].includes(urlObj.protocol);
+    } catch {
+      return false;
     }
   };
 
@@ -163,6 +184,17 @@ function App() {
                     <p className="text-xs text-gray-500">or click to browse</p>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Info about cloud images */}
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+            <div className="flex items-start">
+              <Cloud className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">Images from Cloud</p>
+                <p>Your Excel file can include image URLs from Google Drive, Dropbox, or direct links. Images will be automatically downloaded and embedded in the PowerPoint.</p>
               </div>
             </div>
           </div>
@@ -249,33 +281,68 @@ function App() {
                       Duration
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Has Image
+                      Image
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {questions.map((q, idx) => (
-                    <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {idx + 1}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {q.question.length > 50 ? q.question.substring(0, 50) + '...' : q.question}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {q.correctAnswer ? 'Vrai' : 'Faux'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {q.duration || defaultDuration}s
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {q.imagePath ? 'Yes' : 'No'}
-                      </td>
-                    </tr>
-                  ))}
+                  {questions.map((q, idx) => {
+                    const hasValidImageUrl = isValidImageUrl(q.imageUrl);
+                    
+                    return (
+                      <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {idx + 1}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {q.question.length > 50 ? q.question.substring(0, 50) + '...' : q.question}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {q.correctAnswer ? 'Vrai' : 'Faux'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {q.duration || defaultDuration}s
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          {q.imageUrl ? (
+                            <div className="flex items-center">
+                              {hasValidImageUrl ? (
+                                <>
+                                  <Cloud className="w-4 h-4 text-green-600 mr-1" />
+                                  <span className="text-green-600 text-xs truncate max-w-[200px]" title={q.imageUrl}>
+                                    {new URL(q.imageUrl).hostname}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="w-4 h-4 text-yellow-600 mr-1" />
+                                  <span className="text-yellow-600 text-xs">Invalid URL</span>
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
+            
+            {/* Info about supported image sources */}
+            {questions.some(q => q.imageUrl) && (
+              <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                <p className="text-sm text-gray-700 font-medium mb-2">Supported image sources:</p>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• Google Drive (share link)</li>
+                  <li>• Dropbox (share link)</li>
+                  <li>• Direct image URLs (https://...)</li>
+                  <li>• OneDrive (direct link)</li>
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </main>

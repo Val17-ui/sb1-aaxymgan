@@ -6,10 +6,12 @@ interface Question {
   question: string;
   correctAnswer?: boolean;
   duration?: number;
+  imageUrl?: string;  // Pas imagePath, mais imageUrl
 }
 
 interface GenerationOptions {
   fileName?: string;
+  defaultDuration?: number;
 }
 
 interface TagInfo {
@@ -31,6 +33,13 @@ interface AppXmlMetadata {
   slideTitles: string[];
 }
 
+// AJOUT 1 : Interface pour les dimensions d'image
+interface ImageDimensions {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 // ========== FONCTIONS UTILITAIRES ==========
 
 // Fonction pour générer un GUID unique (format UUID v4)
@@ -92,7 +101,225 @@ function validateQuestions(questions: Question[]): void {
     }
   });
 }
+// ========== AJOUT 2 : GESTION DES IMAGES CLOUD ==========
+// PLACER ICI LES NOUVELLES FONCTIONS
 
+// Calculer les dimensions de l'image en préservant le ratio d'aspect
+function calculateImageDimensions(
+  originalWidth: number,
+  originalHeight: number
+): ImageDimensions {
+  // Zone dédiée à l'image : partie droite de la slide
+  // Réduisons un peu les dimensions pour être sûr
+  const imageAreaX = 5486400;  // Position X (droite)
+  const imageAreaY = 1600200;  // Position Y (alignée avec les réponses)
+  const imageAreaWidth = 3000000;  // Largeur max (réduite)
+  const imageAreaHeight = 3000000; // Hauteur max (réduite)
+  
+  const imageRatio = originalWidth / originalHeight;
+  const areaRatio = imageAreaWidth / imageAreaHeight;
+  
+  let finalWidth: number;
+  let finalHeight: number;
+  
+  if (imageRatio > areaRatio) {
+    finalWidth = imageAreaWidth;
+    finalHeight = Math.round(finalWidth / imageRatio);
+  } else {
+    finalHeight = imageAreaHeight;
+    finalWidth = Math.round(finalHeight * imageRatio);
+  }
+  
+  // Centrer l'image dans la zone
+  const offsetX = Math.round((imageAreaWidth - finalWidth) / 2);
+  const offsetY = Math.round((imageAreaHeight - finalHeight) / 2);
+  
+  return {
+    x: imageAreaX + offsetX,
+    y: imageAreaY + offsetY,
+    width: finalWidth,
+    height: finalHeight
+  };
+}
+
+// Fonction pour convertir les URLs de partage en URLs directes
+function processCloudUrl(url: string): string {
+  try {
+    // Google Drive - formats possibles
+    if (url.includes('drive.google.com')) {
+      // Format : https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+      const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9-_]+)/);
+      if (fileIdMatch) {
+        // IMPORTANT : Utiliser uc?export=download pour forcer le téléchargement
+        return `https://drive.google.com/uc?export=download&id=${fileIdMatch[1]}`;
+      }
+      
+      // Format : https://drive.google.com/open?id=FILE_ID
+      const openIdMatch = url.match(/[?&]id=([a-zA-Z0-9-_]+)/);
+      if (openIdMatch) {
+        return `https://drive.google.com/uc?export=download&id=${openIdMatch[1]}`;
+      }
+      
+      // Si c'est déjà au format uc?id=
+      if (url.includes('/uc?') && url.includes('id=')) {
+        // S'assurer qu'on a export=download
+        if (!url.includes('export=download')) {
+          return url.replace('uc?id=', 'uc?export=download&id=');
+        }
+        return url;
+      }
+    }
+    
+    // Dropbox
+    if (url.includes('dropbox.com')) {
+      // Utiliser dl=1 au lieu de raw=1 pour le téléchargement direct
+      return url.replace('?dl=0', '?dl=1');
+    }
+    
+    // URL directe
+    return url;
+  } catch (error) {
+    console.error('Erreur lors du traitement de l\'URL:', error);
+    return url;
+  }
+}
+
+// Obtenir les dimensions d'une image
+function getImageDimensions(blob: Blob): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {  // Pas de reject
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.width, height: img.height });
+    };
+    
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: 1920, height: 1080 });
+    };
+    
+    img.src = url;
+  });
+}
+async function createDefaultTemplate(): Promise<File> {
+  // Pour l'instant, on va juste throw une erreur
+  // Dans une vraie implémentation, on créerait un template minimal
+  throw new Error('Aucun template fourni. Veuillez sélectionner un fichier PowerPoint template.');
+}
+// Télécharger une image depuis le cloud avec ses dimensions
+async function downloadImageFromCloudWithDimensions(
+  url: string
+): Promise<{ data: ArrayBuffer; extension: string; width: number; height: number } | null> {
+  try {
+    console.log(`[IMAGE] Début téléchargement: ${url}`);
+    
+    // Pour les tests, utiliser directement l'URL sans transformation
+    let finalUrl = url;
+    
+    // Traiter seulement les URLs connues
+    if (url.includes('drive.google.com')) {
+      finalUrl = processCloudUrl(url);
+      console.log(`[IMAGE] URL Google Drive transformée: ${finalUrl}`);
+    } else if (url.includes('dropbox.com')) {
+      finalUrl = processCloudUrl(url);
+      console.log(`[IMAGE] URL Dropbox transformée: ${finalUrl}`);
+    }
+    
+    console.log(`[IMAGE] Tentative de fetch: ${finalUrl}`);
+    
+    // Essayer de télécharger
+    const response = await fetch(finalUrl);
+    
+    console.log(`[IMAGE] Réponse reçue: ${response.status} ${response.statusText}`);
+    console.log(`[IMAGE] Content-Type: ${response.headers.get('content-type')}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const blob = await response.blob();
+    console.log(`[IMAGE] Blob reçu: ${blob.size} octets, type: ${blob.type}`);
+    
+    // Vérifier que c'est une image
+    if (!blob.type.startsWith('image/')) {
+      // Certains serveurs ne renvoient pas le bon Content-Type
+      console.warn(`[IMAGE] Type MIME non-image détecté: ${blob.type}, on continue quand même`);
+    }
+    
+    const arrayBuffer = await blob.arrayBuffer();
+    
+    // Déterminer l'extension
+    let extension = 'jpg';
+    if (blob.type) {
+      const mimeToExt: { [key: string]: string } = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/gif': 'gif',
+        'image/webp': 'webp',
+        'image/svg+xml': 'svg'
+      };
+      extension = mimeToExt[blob.type] || 'jpg';
+    }
+    
+    // Pour le debug, créer une image temporaire pour obtenir les dimensions
+    const dimensions = await getImageDimensions(blob);
+    
+    console.log(`[IMAGE] ✓ Succès: ${(arrayBuffer.byteLength / 1024).toFixed(2)}KB, ${dimensions.width}x${dimensions.height}, ${extension}`);
+    
+    return {
+      data: arrayBuffer,
+      extension,
+      width: dimensions.width,
+      height: dimensions.height
+    };
+  } catch (error) {
+    console.error(`[IMAGE] ✗ Échec pour ${url}:`, error);
+    if (error instanceof Error) {
+      console.error(`[IMAGE] Message: ${error.message}`);
+      console.error(`[IMAGE] Stack: ${error.stack}`);
+    }
+    return null;
+  }
+}
+
+// Mettre à jour Content_Types.xml pour inclure les types d'images
+function updateContentTypesForImages(content: string, imageExtensions: Set<string>): string {
+  let updated = content;
+  
+  imageExtensions.forEach(ext => {
+    if (!updated.includes(`Extension="${ext}"`)) {
+      let contentType = 'image/jpeg';
+      
+      switch(ext) {
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'gif':
+          contentType = 'image/gif';
+          break;
+        case 'bmp':
+          contentType = 'image/bmp';
+          break;
+        case 'svg':
+          contentType = 'image/svg+xml';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+      }
+      
+      const insertPoint = updated.indexOf('<Override');
+      if (insertPoint > -1) {
+        const newDefault = `\n<Default Extension="${ext}" ContentType="${contentType}"/>`;
+        updated = updated.slice(0, insertPoint) + newDefault + updated.slice(insertPoint);
+      }
+    }
+  });
+  
+  return updated;
+}
 // ========== GESTION DES LAYOUTS ==========
 
 // Trouve le prochain slideLayout disponible après les existants
@@ -308,7 +535,7 @@ async function ensureOmbeaSlideLayoutExists(zip: JSZip): Promise<{ layoutFileNam
     </p:spTree>
     <p:extLst>
       <p:ext uri="{BB962C8B-B14F-4D97-AF65-F5344CB8AC3E}">
-        <p14:creationId xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="2131546393"/>
+      <p14:creationId xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="${Math.floor(Math.random() * 2147483647) + 1}"/>
       </p:ext>
     </p:extLst>
   </p:cSld>
@@ -403,19 +630,20 @@ async function updateContentTypesForNewLayout(zip: JSZip, layoutFileName: string
 // ========== CRÉATION DES SLIDES ==========
 
 // Génère le XML d'une nouvelle slide OMBEA
-function createSlideXml(question: string, slideNumber: number, duration: number = 30): string {
-  // Calculer des IDs uniques basés sur le numéro de slide
-  // Pour éviter les conflits, on utilise slideNumber * 10 + position
+// Garder l'ancienne fonction pour les slides sans image
+function createSlideXml(question: string, slideNumber: number, duration: number = 30, imageDimensions?: ImageDimensions): string {
+  // Utiliser slideNumber pour éviter l'avertissement
+  const slideComment = `<!-- Slide ${slideNumber} -->`;
+  
+  // IDs uniques basés sur le slideNumber
   const baseId = slideNumber * 10;
   const grpId = baseId + 1;
   const titleId = baseId + 2;
   const bodyId = baseId + 3;
   const countdownId = baseId + 4;
+  const imageId = baseId + 5;
   
-  // Utiliser slideNumber pour le commentaire
-  const slideComment = `<!-- Slide ${slideNumber} -->`;
-  
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  let xmlContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 ${slideComment}
 <p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
   <p:cSld>
@@ -455,7 +683,39 @@ ${slideComment}
             <a:endParaRPr lang="fr-FR" dirty="0"/>
           </a:p>
         </p:txBody>
-      </p:sp>
+      </p:sp>`;
+  
+  // AJOUTER L'IMAGE SI PRÉSENTE (avant les réponses pour l'ordre de superposition)
+  if (imageDimensions) {
+    xmlContent += `
+      <p:pic>
+        <p:nvPicPr>
+          <p:cNvPr id="${imageId}" name="Image ${slideNumber}"/>
+          <p:cNvPicPr>
+            <a:picLocks noChangeAspect="1"/>
+          </p:cNvPicPr>
+          <p:nvPr/>
+        </p:nvPicPr>
+        <p:blipFill>
+          <a:blip r:embed="rId6"/>
+          <a:stretch>
+            <a:fillRect/>
+          </a:stretch>
+        </p:blipFill>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="${imageDimensions.x}" y="${imageDimensions.y}"/>
+            <a:ext cx="${imageDimensions.width}" cy="${imageDimensions.height}"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+        </p:spPr>
+      </p:pic>`;
+  }
+  
+  // CONTINUER AVEC LE RESTE DE LA SLIDE OMBEA (réponses et countdown)
+  xmlContent += `
       <p:sp>
         <p:nvSpPr>
           <p:cNvPr id="${bodyId}" name="Espace réservé du texte ${slideNumber}"/>
@@ -538,10 +798,10 @@ ${slideComment}
       <p:tags r:id="rId1"/>
     </p:custDataLst>
     <p:extLst>
-      <p:ext uri="{BB962C8B-B14F-4D97-AF65-F5344CB8AC3E}">
-        <p14:creationId xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="${Math.floor(Math.random() * 10000000000)}"/>
-      </p:ext>
-    </p:extLst>
+    <p:ext uri="{BB962C8B-B14F-4D97-AF65-F5344CB8AC3E}">
+      <p14:creationId xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="${Math.floor(Math.random() * 2147483647) + 1}"/>
+    </p:ext>
+  </p:extLst>
   </p:cSld>
   <p:clrMapOvr>
     <a:masterClrMapping/>
@@ -554,7 +814,10 @@ ${slideComment}
     </p:tnLst>
   </p:timing>
 </p:sld>`;
+  
+  return xmlContent;
 }
+
 // ========== GESTION DES TAGS ==========
 // Calcule le numéro de base pour les tags d'une slide
 function calculateBaseTagNumber(slideNumber: number): number {
@@ -640,20 +903,7 @@ function createSlideTagFiles(
 }
 
 // Génère le fichier .rels pour une slide OMBEA avec les bons tags
-function createSlideRelsXml(
-  slideNumber: number,
-  layoutFileName: string
-): string {
-  const baseTagNumber = calculateBaseTagNumber(slideNumber); 
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagNumber}.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagNumber + 1}.xml"/>
-  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagNumber + 2}.xml"/>
-  <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagNumber + 3}.xml"/>
-  <Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/${layoutFileName}"/>
-</Relationships>`;
-}
+
 // ========== GESTION DES RID ==========
 
 // Analyse et extrait tous les rId existants d'un fichier .rels
@@ -1197,27 +1447,28 @@ async function updateCoreXml(zip: JSZip, slideCount: number): Promise<void> {
 
 // Fonction principale de génération avec support OMBEA
 export async function generatePPTX(
-  templateFile: File,
+  templateFile: File | null,  // Accepte null
   questions: Question[],
   options: GenerationOptions = {}
 ): Promise<void> {
   try {
-    // DEBUG: Générer un ID unique pour cette exécution
+    // Ajouter cette ligne si elle manque :
     const executionId = Date.now();
     console.log(`\n=== DÉBUT GÉNÉRATION ${executionId} ===`);
-    
-    // DEBUG: Afficher la taille du template
-    console.log(`Template: ${templateFile.name}, taille: ${templateFile.size} octets`);
-    
-    // DEBUG: Calculer un hash simple des questions
-    const questionsHash = questions.map(q => q.question).join('|');
-    console.log(`Hash questions: ${questionsHash.substring(0, 50)}...`);
-    
-    console.log('Validation des données...');
+    // Validation
     validateQuestions(questions);
 
+    // Si pas de template, créer un template par défaut
+    let template: File;
+    if (templateFile) {
+      template = templateFile;
+    } else {
+      // Créer un template minimal
+      template = await createDefaultTemplate();
+    }
+
     console.log('Chargement du modèle...');
-    const templateZip = await JSZip.loadAsync(templateFile);
+    const templateZip = await JSZip.loadAsync(template);
     
     // DEBUG: Vérifier l'intégrité du ZIP chargé
     let fileCount = 0;
@@ -1247,43 +1498,178 @@ export async function generatePPTX(
 
     outputZip.folder('ppt/tags');
 
-    console.log('Création des nouvelles slides OMBEA...');
-    for (let i = 0; i < questions.length; i++) {
-      const slideNumber = existingSlideCount + i + 1;
-      const question = questions[i];
-      const correctAnswer = question.correctAnswer !== undefined ? question.correctAnswer : false;
-      const duration = question.duration || 30;
-
-      const slideXml = createSlideXml(question.question, slideNumber, duration);
-      outputZip.file(`ppt/slides/slide${slideNumber}.xml`, slideXml);
-
-      const slideRelsXml = createSlideRelsXml(i + 1, layoutFileName);
-      outputZip.file(`ppt/slides/_rels/slide${slideNumber}.xml.rels`, slideRelsXml);
-
-      const tags = createSlideTagFiles(i + 1, correctAnswer, duration);
-      tags.forEach(tag => {
-        outputZip.file(`ppt/tags/${tag.fileName}`, tag.content);
-        totalTagsCreated = Math.max(totalTagsCreated, tag.tagNumber);
-      });
-
-      console.log(`Slide OMBEA ${slideNumber} créée: ${question.question.substring(0, 50)}...`);
+    // AJOUTER ICI :
+    // S'assurer que le dossier media existe
+    if (!outputZip.folder('ppt/media')) {
+      outputZip.folder('ppt/media');
     }
+    
+    // Puis continuer avec :
+    console.log('Création des nouvelles slides OMBEA...');
+    const imageExtensions = new Set<string>();
 
-    console.log(`Total des tags créés: ${totalTagsCreated}`);
+// Structure pour stocker les infos des images téléchargées
+interface DownloadedImage {
+  fileName: string;
+  data: ArrayBuffer;
+  width: number;
+  height: number;
+  dimensions: ImageDimensions;
+}
 
+const downloadedImages = new Map<number, DownloadedImage>();
+
+// Étape 1 : Télécharger toutes les images en parallèle (si présentes)
+if (questions.some(q => q.imageUrl)) {
+  console.log('Téléchargement des images depuis le cloud...');
+  const imagePromises = questions.map(async (question, index) => {
+    if (question.imageUrl) {
+      try {
+        const imageData = await downloadImageFromCloudWithDimensions(question.imageUrl);
+        if (imageData) {
+          const slideNumber = existingSlideCount + index + 1;
+          const fileName = `image${slideNumber}.${imageData.extension}`;
+          
+          // Calculer les dimensions optimales pour l'image
+          const dimensions = calculateImageDimensions(
+            imageData.width,
+            imageData.height
+          );
+          console.log(`[IMAGE] Dimensions calculées: x=${dimensions.x}, y=${dimensions.y}, w=${dimensions.width}, h=${dimensions.height}`);
+          return {
+            slideNumber,
+            image: {
+              fileName,
+              data: imageData.data,
+              width: imageData.width,
+              height: imageData.height,
+              dimensions,
+              extension: imageData.extension
+            }
+          };
+        }
+      } catch (error) {
+        console.error(`Erreur téléchargement image pour question ${index + 1}:`, error);
+      }
+    }
+    return null;
+  });
+
+  const imageResults = await Promise.all(imagePromises);
+
+  // Stocker les images téléchargées et ajouter au ZIP
+  imageResults.forEach(result => {
+    if (result) {
+      downloadedImages.set(result.slideNumber, result.image);
+      imageExtensions.add(result.image.extension);
+      
+      // S'assurer que le dossier existe
+      let mediaFolder = outputZip.folder('ppt/media');
+      if (!mediaFolder) {
+        console.log('[ZIP] Création du dossier ppt/media');
+        mediaFolder = outputZip.folder('ppt')!.folder('media')!;
+      }
+      
+      // Ajouter l'image
+      console.log(`[ZIP] Ajout de l'image: ${result.image.fileName}`);
+      mediaFolder.file(result.image.fileName, result.image.data);
+      
+      // Vérifier que le fichier a été ajouté
+      const addedFile = outputZip.file(`ppt/media/${result.image.fileName}`);
+      if (addedFile) {
+        console.log(`[ZIP] ✓ Image ajoutée avec succès: ppt/media/${result.image.fileName}`);
+      } else {
+        console.error(`[ZIP] ✗ Échec ajout image: ppt/media/${result.image.fileName}`);
+      }
+    }
+  });
+
+  console.log(`${downloadedImages.size} images téléchargées avec succès`);
+}
+
+// Étape 2 : Créer les slides OMBEA (avec ou sans images)
+for (let i = 0; i < questions.length; i++) {
+  const slideNumber = existingSlideCount + i + 1;
+  const question = questions[i];
+  const correctAnswer = question.correctAnswer !== undefined ? question.correctAnswer : false;
+  const duration = question.duration || options.defaultDuration || 30;
+  const questionIndex = i + 1;
+  
+  const downloadedImage = downloadedImages.get(slideNumber);
+  const hasImage = !!downloadedImage;
+
+  // 1. Créer le XML de la slide OMBEA
+  const slideXml = createSlideXml(
+    question.question, 
+    slideNumber, 
+    duration, 
+    hasImage ? downloadedImage.dimensions : undefined
+  );
+  
+  outputZip.file(`ppt/slides/slide${slideNumber}.xml`, slideXml);
+  
+  // 2. CRUCIAL : Créer le fichier .rels de la slide
+  const baseTagNumber = calculateBaseTagNumber(questionIndex);
+  
+  let slideRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagNumber}.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagNumber + 1}.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagNumber + 2}.xml"/>
+  <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag${baseTagNumber + 3}.xml"/>
+  <Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/${layoutFileName}"/>`;
+  
+  if (hasImage && downloadedImage) {
+    slideRelsXml += `
+  <Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${downloadedImage.fileName}"/>`;
+  }
+  
+  slideRelsXml += `
+</Relationships>`;
+  
+  outputZip.file(`ppt/slides/_rels/slide${slideNumber}.xml.rels`, slideRelsXml);
+
+  // 3. Créer les fichiers tags
+  const tags = createSlideTagFiles(questionIndex, correctAnswer, duration);
+  tags.forEach(tag => {
+    outputZip.file(`ppt/tags/${tag.fileName}`, tag.content);
+    totalTagsCreated = Math.max(totalTagsCreated, tag.tagNumber);
+  });
+
+  const imageStatus = hasImage ? ' (avec image cloud)' : '';
+  console.log(`Slide OMBEA ${slideNumber} créée${imageStatus}: ${question.question.substring(0, 50)}...`);
+}
+
+console.log(`Total des tags créés: ${totalTagsCreated}`);
+
+// PROBLÈME 2 : S'assurer que le dossier media existe même s'il n'y a pas d'images
+// Ajouter après la création des slides :
+if (!outputZip.folder('ppt/media')) {
+  outputZip.folder('ppt/media');
+}
+
+ 
+    // Mettre à jour Content_Types.xml
     const contentTypesFile = outputZip.file('[Content_Types].xml');
     if (contentTypesFile) {
-      const contentTypesContent = await contentTypesFile.async('string');
-      const updatedContentTypes = updateContentTypesComplete(
+      let contentTypesContent = await contentTypesFile.async('string');
+      
+      // Ajouter les types d'images si nécessaire
+      if (imageExtensions.size > 0) {
+        contentTypesContent = updateContentTypesForImages(contentTypesContent, imageExtensions);
+      }
+      
+      // Ajouter le reste
+      contentTypesContent = updateContentTypesComplete(
         contentTypesContent,
         questions.length,
         existingSlideCount,
         layoutFileName,
         totalTagsCreated
       );
-      outputZip.file('[Content_Types].xml', updatedContentTypes);
+      
+      outputZip.file('[Content_Types].xml', contentTypesContent);
     }
-
     const presentationRelsFile = outputZip.file('ppt/_rels/presentation.xml.rels');
     if (presentationRelsFile) {
       const presentationRelsContent = await presentationRelsFile.async('string');
@@ -1321,7 +1707,6 @@ const fileName = options.fileName || `Questions_OMBEA_${new Date().toISOString()
     console.log(`Total des slides: ${existingSlideCount + questions.length}`);
     console.log(`Total des tags: ${totalTagsCreated}`);
     console.log(`=== FIN GÉNÉRATION ${executionId} - SUCCÈS ===`);
-    
   } catch (error: any) {
     console.error(`=== ERREUR GÉNÉRATION ===`);
     console.error('Stack trace complet:', error.stack);
