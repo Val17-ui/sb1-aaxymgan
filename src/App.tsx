@@ -9,7 +9,6 @@ import FunctionalPanel from './components/FunctionalPanel';
 function App() {
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [templateFile, setTemplateFile] = useState<File | null>(null);
-  const [defaultDuration, setDefaultDuration] = useState<number>(30);
   const [processing, setProcessing] = useState<boolean>(false);
   const [status, setStatus] = useState<{ message: string; type: 'info' | 'success' | 'error' } | null>(null);
   const [questions, setQuestions] = useState<any[]>([]);
@@ -80,7 +79,6 @@ function App() {
     try {
       // Passer la configuration OMBEA à la fonction de génération
       await generatePPTX(templateFile, questions, { 
-        defaultDuration,
         ombeaConfig: config 
       });
       setStatus({ message: 'Fichier PPTX généré avec succès !', type: 'success' });
@@ -122,12 +120,12 @@ function App() {
             <FunctionalPanel
               excelFile={excelFile}
               templateFile={templateFile}
-              defaultDuration={defaultDuration}
+              defaultDuration={30} // Valeur par défaut pour compatibilité
               processing={processing}
               questions={questions}
               onExcelDrop={onExcelDrop}
               onTemplateDrop={onTemplateDrop}
-              onDefaultDurationChange={setDefaultDuration}
+              onDefaultDurationChange={() => {}} // Fonction vide pour compatibilité
               onProcessExcel={handleProcessExcel}
               onGeneratePPTX={handleGeneratePPTX}
             />
@@ -173,9 +171,6 @@ function App() {
                       Réponse Correcte
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Durée
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Image
                     </th>
                   </tr>
@@ -202,9 +197,6 @@ function App() {
                           }`}>
                             {q.correctAnswer ? 'Vrai' : 'Faux'}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {q.duration || defaultDuration}s
                         </td>
                         <td className="px-6 py-4 text-sm">
                           {q.imageUrl ? (

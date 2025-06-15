@@ -54,6 +54,15 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) => {
     { value: 'Percentage_Three_Decimal', label: '0,000%' },
   ];
 
+  const timeLimitOptions = [
+    { value: 0, label: 'Pas de limite' },
+    { value: 10, label: '10 secondes' },
+    { value: 20, label: '20 secondes' },
+    { value: 30, label: '30 secondes' },
+    { value: 40, label: '40 secondes' },
+    { value: 50, label: '50 secondes' },
+  ];
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-6 h-fit">
       <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
@@ -138,17 +147,17 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) => {
               <Info className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
             </Tooltip>
           </div>
-          <div className="flex items-center space-x-2">
-            <input
-              type="number"
-              min="0"
-              max="300"
-              value={config.pollTimeLimit}
-              onChange={(e) => updateConfig('pollTimeLimit', parseInt(e.target.value) || 0)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-            <span className="text-sm text-gray-500 whitespace-nowrap">secondes</span>
-          </div>
+          <select
+            value={config.pollTimeLimit}
+            onChange={(e) => updateConfig('pollTimeLimit', parseInt(e.target.value))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+          >
+            {timeLimitOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Déclenchement du chrono */}
@@ -202,7 +211,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) => {
           <div>Vote: {config.pollStartMode === 'Automatic' ? 'Automatique' : 'Manuel'}</div>
           <div>Style: {answerStyleOptions.find(opt => opt.value === config.answersBulletStyle)?.label}</div>
           <div>Format: {formatOptions.find(opt => opt.value === config.chartValueLabelFormat)?.label}</div>
-          <div>Durée: {config.pollTimeLimit === 0 ? 'Illimitée' : `${config.pollTimeLimit}s`}</div>
+          <div>Durée: {timeLimitOptions.find(opt => opt.value === config.pollTimeLimit)?.label}</div>
           <div>Chrono: {config.pollCountdownStartMode === 'Automatic' ? 'Auto' : 'Manuel'}</div>
           <div>Réponses max: {config.pollMultipleResponse}</div>
         </div>
