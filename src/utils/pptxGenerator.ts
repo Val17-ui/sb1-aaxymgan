@@ -645,8 +645,8 @@ function createSlideXml(question: string, slideNumber: number, duration: number 
     switch (ombeaConfig.answersBulletStyle) {
       case 'ppBulletAlphaUCParenRight': bulletXml = '<a:buAutoNum type="alphaUCParenR"/>'; break;
       case 'ppBulletAlphaUCPeriod': bulletXml = '<a:buAutoNum type="alphaUCPeriod"/>'; break;
-      case 'ppBulletAlphaLCParenRight': bulletXml = '<a:buAutoNum type="alphaLCParenR"/>'; break;
-      case 'ppBulletAlphaLCPeriod': bulletXml = '<a:buAutoNum type="alphaLCPeriod"/>'; break;
+      // ppBulletAlphaLCParenRight case REMOVED
+      // ppBulletAlphaLCPeriod case REMOVED
       case 'ppBulletArabicParenRight': bulletXml = '<a:buAutoNum type="arabicParenR"/>'; break;
       case 'ppBulletArabicPeriod': bulletXml = '<a:buAutoNum type="arabicPeriod"/>'; break;
       // If a new style is added to ConfigOptions but not here, it will use the default.

@@ -7,7 +7,7 @@ export interface Question {
 
 export interface ConfigOptions {
   pollStartMode: 'Automatic' | 'Manual';
-  answersBulletStyle: 'ppBulletAlphaUCParenRight' | 'ppBulletAlphaUCPeriod' | 'ppBulletAlphaLCParenRight' | 'ppBulletAlphaLCPeriod' | 'ppBulletArabicParenRight' | 'ppBulletArabicPeriod';
+  answersBulletStyle: 'ppBulletAlphaUCParenRight' | 'ppBulletAlphaUCPeriod' | 'ppBulletArabicParenRight' | 'ppBulletArabicPeriod';
   chartValueLabelFormat: 'Response_Count' | 'Percentage_Integer' | 'Percentage_One_Decimal' | 'Percentage_Two_Decimal' | 'Percentage_Three_Decimal';
   pollTimeLimit: number;
   pollCountdownStartMode: 'Automatic' | 'Manual';
