@@ -762,7 +762,7 @@ ${slideComment}
           </a:p>
           <a:p>
             <a:pPr marL="514350" indent="-514350">
-              <a:buAutoNum type="arabicPeriod"/>
+              ${bulletXml}
             </a:pPr>
             <a:r>
               <a:rPr lang="fr-FR" dirty="0" smtClean="0"/>
