@@ -5,9 +5,19 @@ export interface Question {
   imageUrl?: string;
 }
 
+export interface ConfigOptions {
+  pollStartMode: 'Automatic' | 'Manual';
+  answersBulletStyle: 'ppBulletAlphaUCParenRight' | 'ppBulletAlphaUCPeriod' | 'ppBulletAlphaLCParenRight' | 'ppBulletAlphaLCPeriod' | 'ppBulletArabicParenRight' | 'ppBulletArabicPeriod';
+  chartValueLabelFormat: 'Response_Count' | 'Percentage_Integer' | 'Percentage_One_Decimal' | 'Percentage_Two_Decimal' | 'Percentage_Three_Decimal';
+  pollTimeLimit: number;
+  pollCountdownStartMode: 'Automatic' | 'Manual';
+  pollMultipleResponse: number;
+}
+
 export interface GenerationOptions {
   fileName?: string;
   defaultDuration?: number;
+  ombeaConfig?: ConfigOptions;
 }
 
 export interface ImageDimensions {
