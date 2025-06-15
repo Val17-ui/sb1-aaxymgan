@@ -623,7 +623,7 @@ async function updateContentTypesForNewLayout(zip: JSZip, layoutFileName: string
 
 // Génère le XML d'une nouvelle slide OMBEA
 // Garder l'ancienne fonction pour les slides sans image
-function createSlideXml(question: string, slideNumber: number, duration: number = 30, imageDimensions?: ImageDimensions): string {
+function createSlideXml(question: string, slideNumber: number, duration: number = 30, imageDimensions?: ImageDimensions, ombeaConfig?: ConfigOptions): string {
   // Utiliser slideNumber pour éviter l'avertissement
   const slideComment = `<!-- Slide ${slideNumber} -->`;
   
@@ -634,6 +634,24 @@ function createSlideXml(question: string, slideNumber: number, duration: number 
   const bodyId = baseId + 3;
   const countdownId = baseId + 4;
   const imageId = baseId + 5;
+
+  let countdownDisplayText = duration; // Default to existing duration parameter
+  if (ombeaConfig?.pollTimeLimit !== undefined) {
+    countdownDisplayText = ombeaConfig.pollTimeLimit;
+  }
+
+  let bulletXml = '<a:buAutoNum type="arabicPeriod"/>'; // Default
+  if (ombeaConfig?.answersBulletStyle) {
+    switch (ombeaConfig.answersBulletStyle) {
+      case 'ppBulletAlphaUCParenRight': bulletXml = '<a:buAutoNum type="alphaUCParenR"/>'; break;
+      case 'ppBulletAlphaUCPeriod': bulletXml = '<a:buAutoNum type="alphaUCPeriod"/>'; break;
+      case 'ppBulletAlphaLCParenRight': bulletXml = '<a:buAutoNum type="alphaLCParenR"/>'; break;
+      case 'ppBulletAlphaLCPeriod': bulletXml = '<a:buAutoNum type="alphaLCPeriod"/>'; break;
+      case 'ppBulletArabicParenRight': bulletXml = '<a:buAutoNum type="arabicParenR"/>'; break;
+      case 'ppBulletArabicPeriod': bulletXml = '<a:buAutoNum type="arabicPeriod"/>'; break;
+      // If a new style is added to ConfigOptions but not here, it will use the default.
+    }
+  }
   
   let xmlContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 ${slideComment}
@@ -735,7 +753,7 @@ ${slideComment}
           <a:lstStyle/>
           <a:p>
             <a:pPr marL="514350" indent="-514350">
-              <a:buAutoNum type="arabicPeriod"/>
+              ${bulletXml}
             </a:pPr>
             <a:r>
               <a:rPr lang="fr-FR" dirty="0" smtClean="0"/>
@@ -782,7 +800,7 @@ ${slideComment}
           <a:p>
             <a:r>
               <a:rPr lang="fr-FR" sz="4400" smtClean="0"/>
-              <a:t>${duration}</a:t>
+              <a:t>${String(countdownDisplayText)}</a:t>
             </a:r>
             <a:endParaRPr lang="fr-FR" sz="4400"/>
           </a:p>
@@ -1596,10 +1614,11 @@ for (let i = 0; i < questions.length; i++) {
 
   // 1. Créer le XML de la slide OMBEA
   const slideXml = createSlideXml(
-    question.question, 
-    slideNumber, 
-    duration, 
-    hasImage ? downloadedImage.dimensions : undefined
+    question.question,
+    slideNumber,
+    duration,
+    hasImage ? downloadedImage.dimensions : undefined,
+    options.ombeaConfig
   );
   
   outputZip.file(`ppt/slides/slide${slideNumber}.xml`, slideXml);
