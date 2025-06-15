@@ -53,24 +53,18 @@ function generateGUID(): string {
 
 // Fonction utilitaire pour échapper le XML
 function escapeXml(unsafe: string): string {
-  if (!unsafe) return ''; // Gérer les chaînes vides ou null
-
-  // Supprimer les caractères de contrôle interdits en XML 1.0 (sauf \n, \r, \t)
+  if (!unsafe) return '';
+  
+  // Supprimer les caractères de contrôle interdits
   let cleaned = unsafe.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 
-  // Journaliser si des caractères suspects sont trouvés
-  if (/[:\-]|\-\-/.test(cleaned)) {
-    console.warn(`Caractères suspects détectés dans la chaîne: ${cleaned}`);
-  }
-
-  // Échapper les caractères réservés XML
+  // Échapper SEULEMENT les caractères réservés XML
   return cleaned
     .replace(/&/g, '&amp;')  // Important : d'abord &
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;')
-    .replace(/:/g, '&#58;') // facultatif si ":" pose souci dans du contenu textuel
     .replace(/--/g, '—');   // remplacer les doubles tirets
 }
 
@@ -871,9 +865,9 @@ function createSlideTagFiles(
     tagNumber: baseTagNumber + 1,
     fileName: `tag${baseTagNumber + 1}.xml`,
     content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:tagLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-  <p:tag name="OR_SHAPE_TYPE" val="OR_TITLE"/>
-</p:tagLst>`
+  <p:tagLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+    <p:tag name="OR_SHAPE_TYPE" val="OR_TITLE"/>
+  </p:tagLst>`
   });
   
   // Tag des réponses avec les points
