@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import { ConfigOptions, GenerationOptions } from '../types';
 
 // ========== INTERFACES ==========
 interface Question {
@@ -9,10 +10,7 @@ interface Question {
   imageUrl?: string;  // Pas imagePath, mais imageUrl
 }
 
-interface GenerationOptions {
-  fileName?: string;
-  defaultDuration?: number;
-}
+// GenerationOptions is now imported from ../types
 
 interface TagInfo {
   tagNumber: number;
@@ -825,8 +823,9 @@ function calculateBaseTagNumber(slideNumber: number): number {
 // Génère les 4 fichiers tags pour une slide OMBEA
 function createSlideTagFiles(
   slideNumber: number,
-  correctAnswer: boolean, 
-  duration: number = 30
+  correctAnswer: boolean,
+  duration: number = 30,
+  ombeaConfig?: ConfigOptions
 ): TagInfo[] {
   const baseTagNumber = calculateBaseTagNumber(slideNumber);
   const slideGuid = generateGUID();
@@ -842,20 +841,20 @@ function createSlideTagFiles(
 <p:tagLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
   <p:tag name="OR_SLIDE_GUID" val="${slideGuid}"/>
   <p:tag name="OR_OFFICE_MAJOR_VERSION" val="14"/>
-  <p:tag name="OR_POLL_START_MODE" val="Automatic"/>
-  <p:tag name="OR_CHART_VALUE_LABEL_FORMAT" val="Response_Count"/>
+  <p:tag name="OR_POLL_START_MODE" val="${ombeaConfig?.pollStartMode || 'Automatic'}"/>
+  <p:tag name="OR_CHART_VALUE_LABEL_FORMAT" val="${ombeaConfig?.chartValueLabelFormat || 'Response_Count'}"/>
   <p:tag name="OR_CHART_RESPONSE_DENOMINATOR" val="Responses"/>
   <p:tag name="OR_CHART_FIXED_RESPONSE_DENOMINATOR" val="100"/>
   <p:tag name="OR_CHART_COLOR_MODE" val="Color_Scheme"/>
   <p:tag name="OR_CHART_APPLY_OMBEA_TEMPLATE" val="True"/>
   <p:tag name="OR_POLL_DEFAULT_ANSWER_OPTION" val="None"/>
   <p:tag name="OR_SLIDE_TYPE" val="OR_QUESTION_SLIDE"/>
-  <p:tag name="OR_ANSWERS_BULLET_STYLE" val="ppBulletArabicPeriod"/>
+  <p:tag name="OR_ANSWERS_BULLET_STYLE" val="${ombeaConfig?.answersBulletStyle || 'ppBulletArabicPeriod'}"/>
   <p:tag name="OR_POLL_FLOW" val="Automatic"/>
   <p:tag name="OR_CHART_DISPLAY_MODE" val="Automatic"/>
-  <p:tag name="OR_POLL_TIME_LIMIT" val="${duration}"/>
-  <p:tag name="OR_POLL_COUNTDOWN_START_MODE" val="Automatic"/>
-  <p:tag name="OR_POLL_MULTIPLE_RESPONSES" val="1"/>
+  <p:tag name="OR_POLL_TIME_LIMIT" val="${ombeaConfig?.pollTimeLimit !== undefined ? ombeaConfig.pollTimeLimit : duration}"/>
+  <p:tag name="OR_POLL_COUNTDOWN_START_MODE" val="${ombeaConfig?.pollCountdownStartMode || 'Automatic'}"/>
+  <p:tag name="OR_POLL_MULTIPLE_RESPONSES" val="${ombeaConfig?.pollMultipleResponse !== undefined ? ombeaConfig.pollMultipleResponse : '1'}"/>
   <p:tag name="OR_POLL_DUPLICATES_ALLOWED" val="False"/>
   <p:tag name="OR_CATEGORIZING" val="False"/>
   <p:tag name="OR_PRIORITY_RANKING" val="False"/>
@@ -1627,7 +1626,7 @@ for (let i = 0; i < questions.length; i++) {
   outputZip.file(`ppt/slides/_rels/slide${slideNumber}.xml.rels`, slideRelsXml);
 
   // 3. Créer les fichiers tags
-  const tags = createSlideTagFiles(questionIndex, correctAnswer, duration);
+  const tags = createSlideTagFiles(questionIndex, correctAnswer, duration, options.ombeaConfig);
   tags.forEach(tag => {
     outputZip.file(`ppt/tags/${tag.fileName}`, tag.content);
     totalTagsCreated = Math.max(totalTagsCreated, tag.tagNumber);
@@ -1753,7 +1752,7 @@ export const handleGeneratePPTX = async (templateFile: File, questions: Question
 
 export type {
   Question,
-  GenerationOptions,
+  // GenerationOptions is now imported
   TagInfo,
   RIdMapping,
   AppXmlMetadata
