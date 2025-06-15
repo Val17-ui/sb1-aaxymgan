@@ -656,28 +656,31 @@ ${slideComment}
         </a:xfrm>
       </p:grpSpPr>
       <p:sp>
-        <p:nvSpPr>
-          <p:cNvPr id="${titleId}" name="Titre ${slideNumber}"/>
-          <p:cNvSpPr>
-            <a:spLocks noGrp="1"/>
-          </p:cNvSpPr>
-          <p:nvPr>
-            <p:ph type="title"/>
-          </p:nvPr>
-        </p:nvSpPr>
-        <p:spPr/>
-        <p:txBody>
-          <a:bodyPr/>
-          <a:lstStyle/>
-          <a:p>
-            <a:r>
-              <a:rPr lang="fr-FR" dirty="0" smtClean="0"/>
-              <a:t>${escapeXml(question)}</a:t>
-            </a:r>
-            <a:endParaRPr lang="fr-FR" dirty="0"/>
-          </a:p>
-        </p:txBody>
-      </p:sp>`;
+      <p:nvSpPr>
+        <p:cNvPr id="${titleId}" name="Titre ${slideNumber}"/>
+        <p:cNvSpPr>
+          <a:spLocks noGrp="1"/>
+        </p:cNvSpPr>
+        <p:nvPr>
+          <p:ph type="title"/>
+          <p:custDataLst>
+            <p:tags r:id="rId2"/>
+          </p:custDataLst>
+        </p:nvPr>
+      </p:nvSpPr>
+      <p:spPr/>
+      <p:txBody>
+        <a:bodyPr/>
+        <a:lstStyle/>
+        <a:p>
+          <a:r>
+            <a:rPr lang="fr-FR" dirty="0"/>
+            <a:t>${escapeXml(question)}</a:t>
+          </a:r>
+          <a:endParaRPr lang="fr-FR" dirty="0"/>
+        </a:p>
+      </p:txBody>
+    </p:sp>`;
   
   // AJOUTER L'IMAGE SI PRÉSENTE (avant les réponses pour l'ordre de superposition)
   if (imageDimensions) {
