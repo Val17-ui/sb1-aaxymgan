@@ -1,14 +1,8 @@
 import React from 'react';
 import { Info } from 'lucide-react';
+import { ConfigOptions } from '../../types';
 
-export interface ConfigOptions {
-  pollStartMode: 'Automatic' | 'Manual';
-  answersBulletStyle: 'ppBulletAlphaUCParenRight' | 'ppBulletAlphaUCPeriod' | 'ppBulletAlphaLCParenRight' | 'ppBulletAlphaLCPeriod' | 'ppBulletArabicParenRight' | 'ppBulletArabicPeriod';
-  chartValueLabelFormat: 'Response_Count' | 'Percentage_Integer' | 'Percentage_One_Decimal' | 'Percentage_Two_Decimal' | 'Percentage_Three_Decimal';
-  pollTimeLimit: number;
-  pollCountdownStartMode: 'Automatic' | 'Manual';
-  pollMultipleResponse: number;
-}
+// Local ConfigOptions interface removed, now imported from ../../types
 
 interface ConfigPanelProps {
   config: ConfigOptions;
@@ -40,8 +34,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) => {
   const answerStyleOptions = [
     { value: 'ppBulletAlphaUCParenRight', label: 'A)-J)' },
     { value: 'ppBulletAlphaUCPeriod', label: 'A.-J.' },
-    { value: 'ppBulletAlphaLCParenRight', label: 'a)-j)' },
-    { value: 'ppBulletAlphaLCPeriod', label: 'a.-j.' },
     { value: 'ppBulletArabicParenRight', label: '1)-10)' },
     { value: 'ppBulletArabicPeriod', label: '1.-10.' },
   ];
