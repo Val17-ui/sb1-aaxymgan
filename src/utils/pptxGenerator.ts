@@ -640,18 +640,25 @@ function createSlideXml(question: string, slideNumber: number, duration: number 
     countdownDisplayText = ombeaConfig.pollTimeLimit;
   }
 
-  let bulletXml = '<a:buAutoNum type="arabicPeriod"/>'; // Default
+  let bulletTypeForXml = 'arabicPeriod'; // Default type
   if (ombeaConfig?.answersBulletStyle) {
     switch (ombeaConfig.answersBulletStyle) {
-      case 'ppBulletAlphaUCParenRight': bulletXml = '<a:buAutoNum type="alphaUcParenR"/>'; break;
-      case 'ppBulletAlphaUCPeriod': bulletXml = '<a:buAutoNum type="alphaUcPeriod"/>'; break;
-      // ppBulletAlphaLCParenRight case REMOVED
-      // ppBulletAlphaLCPeriod case REMOVED
-      case 'ppBulletArabicParenRight': bulletXml = '<a:buAutoNum type="arabicParenR"/>'; break;
-      case 'ppBulletArabicPeriod': bulletXml = '<a:buAutoNum type="arabicPeriod"/>'; break;
-      // If a new style is added to ConfigOptions but not here, it will use the default.
+      case 'ppBulletAlphaUCParenRight': bulletTypeForXml = 'alphaUcParenR'; break;
+      case 'ppBulletAlphaUCPeriod': bulletTypeForXml = 'alphaUcPeriod'; break;
+      case 'ppBulletArabicParenRight': bulletTypeForXml = 'arabicParenR'; break;
+      case 'ppBulletArabicPeriod': bulletTypeForXml = 'arabicPeriod'; break;
     }
   }
+
+  const listStyleXml = `
+    <a:lstStyle>
+      <a:lvl1pPr marL="514350" indent="-514350" algn="l">
+        <a:buFontTx/>
+        <a:buClrTx/>
+        <a:buSzTx/>
+        <a:buAutoNum type="${bulletTypeForXml}"/>
+      </a:lvl1pPr>
+    </a:lstStyle>`;
   
   let xmlContent = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 ${slideComment}
@@ -750,26 +757,16 @@ ${slideComment}
         </p:spPr>
         <p:txBody>
           <a:bodyPr/>
-          <a:lstStyle/>
+          ${listStyleXml}
           <a:p>
-            <a:pPr marL="514350" indent="-514350">
-              <a:buClrTx/>
-              <a:buSzTx/>
-              <a:buFontTx/>
-              ${bulletXml}
-            </a:pPr>
+            <a:pPr lvl="0"/>
             <a:r>
               <a:rPr lang="fr-FR" dirty="0" smtClean="0"/>
               <a:t>Vrai</a:t>
             </a:r>
           </a:p>
           <a:p>
-            <a:pPr marL="514350" indent="-514350">
-              <a:buClrTx/>
-              <a:buSzTx/>
-              <a:buFontTx/>
-              ${bulletXml}
-            </a:pPr>
+            <a:pPr lvl="0"/>
             <a:r>
               <a:rPr lang="fr-FR" dirty="0" smtClean="0"/>
               <a:t>Faux</a:t>
