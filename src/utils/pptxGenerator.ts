@@ -753,6 +753,9 @@ ${slideComment}
           <a:lstStyle/>
           <a:p>
             <a:pPr marL="514350" indent="-514350">
+              <a:buClrTx/>
+              <a:buSzTx/>
+              <a:buFontTx/>
               ${bulletXml}
             </a:pPr>
             <a:r>
@@ -762,6 +765,9 @@ ${slideComment}
           </a:p>
           <a:p>
             <a:pPr marL="514350" indent="-514350">
+              <a:buClrTx/>
+              <a:buSzTx/>
+              <a:buFontTx/>
               ${bulletXml}
             </a:pPr>
             <a:r>
