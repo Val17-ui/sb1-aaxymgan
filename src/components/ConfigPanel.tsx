@@ -47,7 +47,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) => {
   ];
 
   const timeLimitOptions = [
-    { value: 0, label: 'Pas de limite' },
+    { value: 0, label: 'Pas de compte à rebours' },
     { value: 10, label: '10 secondes' },
     { value: 20, label: '20 secondes' },
     { value: 30, label: '30 secondes' },
@@ -89,7 +89,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) => {
             <label className="text-sm font-medium text-gray-700">
               Style des réponses
             </label>
-            <Tooltip text="Définit le format d'affichage des options de réponse (lettres majuscules/minuscules, parenthèses/points).">
+            <Tooltip text="Lettre / Chiffre, parenthèse / point.">
               <Info className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
             </Tooltip>
           </div>
@@ -135,7 +135,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) => {
             <label className="text-sm font-medium text-gray-700">
               Durée du compte à rebours
             </label>
-            <Tooltip text="Temps limite en secondes pour répondre au vote. 0 = pas de limite de temps.">
+            <Tooltip text="Temps limite en secondes pour répondre au vote.">
               <Info className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
             </Tooltip>
           </div>
