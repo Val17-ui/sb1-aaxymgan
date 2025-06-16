@@ -138,29 +138,29 @@ function calculateImageDimensions(
 function processCloudUrl(url: string): string {
   try {
     // Google Drive - formats possibles
-    if (url.includes('drive.google.com')) {
-      // Format : https://drive.google.com/file/d/FILE_ID/view?usp=sharing
-      const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9-_]+)/);
-      if (fileIdMatch) {
-        // IMPORTANT : Utiliser uc?export=download pour forcer le téléchargement
-        return `https://drive.google.com/uc?export=download&id=${fileIdMatch[1]}`;
-      }
+    // if (url.includes('drive.google.com')) {
+    //   // Format : https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+    //   const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9-_]+)/);
+    //   if (fileIdMatch) {
+    //     // IMPORTANT : Utiliser uc?export=download pour forcer le téléchargement
+    //     return `https://drive.google.com/uc?export=download&id=${fileIdMatch[1]}`;
+    //   }
       
-      // Format : https://drive.google.com/open?id=FILE_ID
-      const openIdMatch = url.match(/[?&]id=([a-zA-Z0-9-_]+)/);
-      if (openIdMatch) {
-        return `https://drive.google.com/uc?export=download&id=${openIdMatch[1]}`;
-      }
+    //   // Format : https://drive.google.com/open?id=FILE_ID
+    //   const openIdMatch = url.match(/[?&]id=([a-zA-Z0-9-_]+)/);
+    //   if (openIdMatch) {
+    //     return `https://drive.google.com/uc?export=download&id=${openIdMatch[1]}`;
+    //   }
       
-      // Si c'est déjà au format uc?id=
-      if (url.includes('/uc?') && url.includes('id=')) {
-        // S'assurer qu'on a export=download
-        if (!url.includes('export=download')) {
-          return url.replace('uc?id=', 'uc?export=download&id=');
-        }
-        return url;
-      }
-    }
+    //   // Si c'est déjà au format uc?id=
+    //   if (url.includes('/uc?') && url.includes('id=')) {
+    //     // S'assurer qu'on a export=download
+    //     if (!url.includes('export=download')) {
+    //       return url.replace('uc?id=', 'uc?export=download&id=');
+    //     }
+    //     return url;
+    //   }
+    // }
     
     // Dropbox
     if (url.includes('dropbox.com')) {
@@ -211,10 +211,11 @@ async function downloadImageFromCloudWithDimensions(
     let finalUrl = url;
     
     // Traiter seulement les URLs connues
-    if (url.includes('drive.google.com')) {
-      finalUrl = processCloudUrl(url);
-      console.log(`[IMAGE] URL Google Drive transformée: ${finalUrl}`);
-    } else if (url.includes('dropbox.com')) {
+    // if (url.includes('drive.google.com')) {
+    //   finalUrl = processCloudUrl(url);
+    //   console.log(`[IMAGE] URL Google Drive transformée: ${finalUrl}`);
+    // } else
+    if (url.includes('dropbox.com')) {
       finalUrl = processCloudUrl(url);
       console.log(`[IMAGE] URL Dropbox transformée: ${finalUrl}`);
     }
@@ -735,6 +736,7 @@ ${slideComment}
   }
   
   // CONTINUER AVEC LE RESTE DE LA SLIDE OMBEA (réponses et countdown)
+  // Answer choices shape
   xmlContent += `
       <p:sp>
         <p:nvSpPr>
@@ -774,7 +776,11 @@ ${slideComment}
             <a:endParaRPr lang="fr-FR" dirty="0"/>
           </a:p>
         </p:txBody>
-      </p:sp>
+      </p:sp>`;
+
+  // Countdown timer shape (conditionally added)
+  if (Number(countdownDisplayText) > 0) {
+    xmlContent += `
       <p:sp>
         <p:nvSpPr>
           <p:cNvPr id="${countdownId}" name="OMBEA Countdown ${slideNumber}"/>
@@ -808,7 +814,11 @@ ${slideComment}
             <a:endParaRPr lang="fr-FR" sz="4400"/>
           </a:p>
         </p:txBody>
-      </p:sp>
+      </p:sp>`;
+  }
+
+  // Closing tags for spTree and cSld etc.
+  xmlContent += `
     </p:spTree>
     <p:custDataLst>
       <p:tags r:id="rId1"/>
