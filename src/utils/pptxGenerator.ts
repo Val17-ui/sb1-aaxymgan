@@ -643,8 +643,8 @@ function createSlideXml(question: string, slideNumber: number, duration: number 
   let bulletXml = '<a:buAutoNum type="arabicPeriod"/>'; // Default
   if (ombeaConfig?.answersBulletStyle) {
     switch (ombeaConfig.answersBulletStyle) {
-      case 'ppBulletAlphaUCParenRight': bulletXml = '<a:buAutoNum type="alphaUCParenR"/>'; break;
-      case 'ppBulletAlphaUCPeriod': bulletXml = '<a:buAutoNum type="alphaUCPeriod"/>'; break;
+      case 'ppBulletAlphaUCParenRight': bulletXml = '<a:buAutoNum type="alphaUcParenR"/>'; break;
+      case 'ppBulletAlphaUCPeriod': bulletXml = '<a:buAutoNum type="alphaUcPeriod"/>'; break;
       // ppBulletAlphaLCParenRight case REMOVED
       // ppBulletAlphaLCPeriod case REMOVED
       case 'ppBulletArabicParenRight': bulletXml = '<a:buAutoNum type="arabicParenR"/>'; break;
