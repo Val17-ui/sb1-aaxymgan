@@ -858,20 +858,88 @@ ${slideComment}
 
 // ========== GESTION DES TAGS ==========
 // Calcule le numéro de base pour les tags d'une slide
-function calculateBaseTagNumber(slideNumber: number): number {
-  // Chaque slide utilise 4 tags, commençant à tag1 pour la première slide
-  return 1 + (slideNumber - 1) * 4; // tag1, tag2, tag3, tag4 pour slide 1; tag5, tag6, tag7, tag8 pour slide 2, etc.
+// Calcule le numéro de base pour les tags d'une slide
+function calculateBaseTagNumber(slideNumber: number, tagOffset: number = 0): number {
+  // Chaque slide utilise 4 tags
+  // Si tagOffset = 20 (car il y a déjà 20 tags), la première nouvelle slide utilisera tags 21-24
+  return tagOffset + 1 + (slideNumber - 1) * 4;
+}
+// Trouve le plus grand numéro de tag existant dans le template
+// Trouve le plus grand numéro de tag existant dans le template
+function findHighestExistingTagNumber(zip: JSZip): number {
+  let maxTagNumber = 0;
+  
+  const tagsFolder = zip.folder('ppt/tags');
+  if (tagsFolder) {
+    tagsFolder.forEach((relativePath) => {
+      const match = relativePath.match(/tag(\d+)\.xml$/);
+      if (match) {
+        const tagNum = parseInt(match[1]);
+        if (tagNum > maxTagNumber) {
+          maxTagNumber = tagNum;
+        }
+      }
+    });
+  }
+  
+  console.log(`Plus grand tag OMBEA existant: tag${maxTagNumber}.xml`);
+  return maxTagNumber;
+}
+// Vérifie et corrige la continuité des numéros de tags
+function ensureTagContinuity(zip: JSZip, startingTag: number, endingTag: number): string[] {
+  const warnings: string[] = [];
+  
+  // Vérifier qu'il n'y a pas de trous dans la séquence
+  for (let i = startingTag; i <= endingTag; i++) {
+    if (!zip.file(`ppt/tags/tag${i}.xml`)) {
+      warnings.push(`Attention: tag${i}.xml manquant dans la séquence`);
+    }
+  }
+  
+  return warnings;
+}
+// Vérifie si une slide est une slide OMBEA
+async function isOmbeaSlide(zip: JSZip, slideNumber: number): Promise<boolean> {
+  const slideRelsPath = `ppt/slides/_rels/slide${slideNumber}.xml.rels`;
+  const slideRelsFile = zip.file(slideRelsPath);
+  
+  if (!slideRelsFile) {
+    return false;
+  }
+  
+  try {
+    const content = await slideRelsFile.async('string');
+    // Une slide OMBEA a des relations vers des tags
+    return content.includes('relationships/tags');
+  } catch {
+    return false;
+  }
 }
 
+// Compte les slides OMBEA existantes
+async function countExistingOmbeaSlides(zip: JSZip): Promise<number> {
+  let count = 0;
+  const totalSlides = countExistingSlides(zip);
+  
+  for (let i = 1; i <= totalSlides; i++) {
+    if (await isOmbeaSlide(zip, i)) {
+      count++;
+    }
+  }
+  
+  console.log(`Slides OMBEA existantes détectées: ${count}`);
+  return count;
+}
 // Génère les 4 fichiers tags pour une slide OMBEA
 function createSlideTagFiles(
-  slideNumber: number,
+  questionIndex: number,
   options: string[],
   correctAnswerIndex: number | undefined,
   duration: number,
-  ombeaConfig?: ConfigOptions
+  ombeaConfig?: ConfigOptions,
+  tagOffset: number = 0
 ): TagInfo[] {
-  const baseTagNumber = calculateBaseTagNumber(slideNumber);
+  const baseTagNumber = calculateBaseTagNumber(questionIndex, tagOffset);
   const slideGuid = generateGUID();
   let points = '';
   if (correctAnswerIndex !== undefined) {
@@ -1176,12 +1244,15 @@ function updateContentTypesComplete(
     }
   }
   
-  // Ajouter tous les tags manquants
-  for (let i = 1; i <= totalTags; i++) {
-    if (!updatedContent.includes(`tag${i}.xml`)) {
-      newOverrides += `\n  <Override PartName="/ppt/tags/tag${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tags+xml"/>`;
-    }
+// Ajouter tous les tags manquants (en tenant compte des existants)
+// On parcourt TOUS les tags jusqu'au total, pas seulement les nouveaux
+for (let i = 1; i <= totalTags; i++) {
+  const tagPath = `/ppt/tags/tag${i}.xml`;
+  // Vérifier plus précisément si le tag existe déjà
+  if (!updatedContent.includes(`PartName="${tagPath}"`)) {
+    newOverrides += `\n  <Override PartName="${tagPath}" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tags+xml"/>`;
   }
+}
   
   // Insérer toutes les nouvelles entrées avant </Types>
   if (newOverrides) {
@@ -1525,7 +1596,16 @@ export async function generatePPTX(
     const existingSlideCount = countExistingSlides(templateZip);
     console.log(`Slides existantes dans le modèle: ${existingSlideCount}`);
     console.log(`Nouvelles slides à créer: ${questions.length}`);
+// Détecter les tags OMBEA existants
+const existingTagsCount = findHighestExistingTagNumber(templateZip);
+console.log(`Tags OMBEA existants: ${existingTagsCount}`);
 
+// Vérifier les slides OMBEA existantes
+const existingOmbeaSlides = await countExistingOmbeaSlides(templateZip);
+if (existingOmbeaSlides > 0) {
+  console.log(`⚠️ Template OMBEA détecté avec ${existingOmbeaSlides} slides OMBEA existantes`);
+  console.log(`Les nouvelles questions seront ajoutées après les slides existantes`);
+}
     let totalTagsCreated = 0;
 
     const outputZip = new JSZip();
@@ -1658,7 +1738,7 @@ for (let i = 0; i < questions.length; i++) {
   outputZip.file(`ppt/slides/slide${slideNumber}.xml`, slideXml);
   
   // 2. CRUCIAL : Créer le fichier .rels de la slide
-  const baseTagNumber = calculateBaseTagNumber(questionIndex);
+  const baseTagNumber = calculateBaseTagNumber(questionIndex, existingTagsCount);
   
   let slideRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -1684,11 +1764,12 @@ for (let i = 0; i < questions.length; i++) {
     question.options, 
     question.correctAnswerIndex, 
     duration, 
-    options.ombeaConfig
+    options.ombeaConfig,
+    existingTagsCount
   );
   tags.forEach(tag => {
     outputZip.file(`ppt/tags/${tag.fileName}`, tag.content);
-    totalTagsCreated = Math.max(totalTagsCreated, tag.tagNumber);
+    totalTagsCreated = tag.tagNumber; // On garde simplement le dernier numéro utilisé
   });
 
   const imageStatus = hasImage ? ' (avec image cloud)' : '';
@@ -1699,7 +1780,12 @@ console.log(`Slide OMBEA ${slideNumber} créée${imageStatus}${optionsInfo}: ${q
 }
 
 console.log(`Total des tags créés: ${totalTagsCreated}`);
-
+if (existingTagsCount > 0) {
+  const warnings = ensureTagContinuity(outputZip, 1, totalTagsCreated);
+  if (warnings.length > 0) {
+    console.warn('⚠️ Problèmes de continuité détectés:', warnings);
+  }
+}
 // PROBLÈME 2 : S'assurer que le dossier media existe même s'il n'y a pas d'images
 // Ajouter après la création des slides :
 if (!outputZip.folder('ppt/media')) {
