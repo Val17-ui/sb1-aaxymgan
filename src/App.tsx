@@ -3,7 +3,8 @@ import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { processExcel } from './utils/excelProcessor';
 import { generatePPTX } from './utils/pptxGenerator';
 import Header from './components/Header';
-import ConfigPanel, { ConfigOptions } from './components/ConfigPanel';
+import ConfigPanel from './components/ConfigPanel';
+import { ConfigOptions } from './types';
 import FunctionalPanel from './components/FunctionalPanel';
 
 function App() {
@@ -168,8 +169,8 @@ function App() {
                       Question
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Réponse Correcte
-                    </th>
+  Options / Réponse
+</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Image
                     </th>
@@ -189,15 +190,20 @@ function App() {
                             {q.question.length > 60 ? q.question.substring(0, 60) + '...' : q.question}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            q.correctAnswer 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {q.correctAnswer ? 'Vrai' : 'Faux'}
-                          </span>
-                        </td>
+                        <td className="px-6 py-4 text-sm">
+  <div className="flex flex-col space-y-1">
+    <span className="text-xs text-gray-500">
+      {q.options.length} option{q.options.length > 1 ? 's' : ''}
+    </span>
+    {q.correctAnswerIndex !== undefined ? (
+      <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 inline-block">
+        {q.options[q.correctAnswerIndex]}
+      </span>
+    ) : (
+      <span className="text-xs text-gray-400 italic">Sondage</span>
+    )}
+  </div>
+</td>
                         <td className="px-6 py-4 text-sm">
                           {q.imageUrl ? (
                             <div className="flex items-center">

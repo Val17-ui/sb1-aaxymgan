@@ -5,9 +5,9 @@ import { ConfigOptions, GenerationOptions } from '../types';
 // ========== INTERFACES ==========
 interface Question {
   question: string;
-  correctAnswer?: boolean;
-  duration?: number;
-  imageUrl?: string;  // Pas imagePath, mais imageUrl
+  options: string[];
+  correctAnswerIndex?: number;
+  imageUrl?: string;
 }
 
 // GenerationOptions is now imported from ../types
@@ -88,8 +88,17 @@ function validateQuestions(questions: Question[]): void {
       throw new Error(`Question ${index + 1}: Le texte de la question est requis`);
     }
     
-    if (question.duration && (typeof question.duration !== 'number' || question.duration <= 0)) {
-      throw new Error(`Question ${index + 1}: La durée doit être un nombre positif`);
+    if (!Array.isArray(question.options) || question.options.length === 0) {
+      throw new Error(`Question ${index + 1}: doit avoir au moins une option`);
+    }
+    if (question.options.length > 10) {
+      throw new Error(`Question ${index + 1}: ne peut pas avoir plus de 10 options`);
+    }
+    if (question.correctAnswerIndex !== undefined && 
+        (typeof question.correctAnswerIndex !== 'number' || 
+         question.correctAnswerIndex < 0 || 
+         question.correctAnswerIndex >= question.options.length)) {
+      throw new Error(`Question ${index + 1}: correctAnswerIndex invalide`);
     }
   });
 }
@@ -624,7 +633,14 @@ async function updateContentTypesForNewLayout(zip: JSZip, layoutFileName: string
 
 // Génère le XML d'une nouvelle slide OMBEA
 // Garder l'ancienne fonction pour les slides sans image
-function createSlideXml(question: string, slideNumber: number, duration: number = 30, imageDimensions?: ImageDimensions, ombeaConfig?: ConfigOptions): string {
+function createSlideXml(
+  question: string,
+  options: string[],
+  slideNumber: number,
+  duration: number = 30,
+  imageDimensions?: ImageDimensions,
+  ombeaConfig?: ConfigOptions
+): string {
   // Utiliser slideNumber pour éviter l'avertissement
   const slideComment = `<!-- Slide ${slideNumber} -->`;
   
@@ -760,21 +776,17 @@ ${slideComment}
         <p:txBody>
           <a:bodyPr/>
           ${listStyleXml}
+          ${options.map(option => `
           <a:p>
-            <a:pPr lvl="0"/>
+            <a:pPr>
+              <a:buFont typeface="+mj-lt"/>
+              <a:buAutoNum type="${bulletTypeForXml}"/>
+            </a:pPr>
             <a:r>
-              <a:rPr lang="fr-FR" dirty="0" smtClean="0"/>
-              <a:t>Vrai</a:t>
+              <a:rPr lang="fr-FR" dirty="0"/>
+              <a:t>${escapeXml(option)}</a:t>
             </a:r>
-          </a:p>
-          <a:p>
-            <a:pPr lvl="0"/>
-            <a:r>
-              <a:rPr lang="fr-FR" dirty="0" smtClean="0"/>
-              <a:t>Faux</a:t>
-            </a:r>
-            <a:endParaRPr lang="fr-FR" dirty="0"/>
-          </a:p>
+          </a:p>`).join('')}
         </p:txBody>
       </p:sp>`;
 
@@ -854,13 +866,23 @@ function calculateBaseTagNumber(slideNumber: number): number {
 // Génère les 4 fichiers tags pour une slide OMBEA
 function createSlideTagFiles(
   slideNumber: number,
-  correctAnswer: boolean,
-  duration: number = 30,
+  options: string[],
+  correctAnswerIndex: number | undefined,
+  duration: number,
   ombeaConfig?: ConfigOptions
 ): TagInfo[] {
   const baseTagNumber = calculateBaseTagNumber(slideNumber);
   const slideGuid = generateGUID();
-  const points = correctAnswer ? "1.00,0.00" : "0.00,1.00";
+  let points = '';
+  if (correctAnswerIndex !== undefined) {
+    // Il y a une bonne réponse
+    points = options.map((_, index) => 
+      index === correctAnswerIndex ? "1.00" : "0.00"
+    ).join(',');
+  } else {
+    // Pas de bonne réponse (sondage) - tous à 0
+    points = options.map(() => "0.00").join(',');
+  }
   
   const tags: TagInfo[] = [];
   
@@ -908,12 +930,11 @@ function createSlideTagFiles(
     tagNumber: baseTagNumber + 2,
     fileName: `tag${baseTagNumber + 2}.xml`,
     content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<p:tagLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-  <p:tag name="OR_SHAPE_TYPE" val="OR_ANSWERS"/>
-  <p:tag name="OR_ANSWER_POINTS" val="${points}"/>
-  <p:tag name="OR_ANSWERS_TEXT" val="Vrai&#13;Faux"/>
-  <p:tag name="OR_EXCEL_ANSWER_COLORS" val="-10838489,-14521195"/>
-</p:tagLst>`
+  <p:tagLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+    <p:tag name="OR_SHAPE_TYPE" val="OR_ANSWERS"/>
+    <p:tag name="OR_ANSWER_POINTS" val="${points}"/>
+    <p:tag name="OR_ANSWERS_TEXT" val="${options.map(escapeXml).join('&#13;')}"/>
+  </p:tagLst>`
   });
   
   // Tag du countdown
@@ -1618,8 +1639,7 @@ if (questions.some(q => q.imageUrl)) {
 for (let i = 0; i < questions.length; i++) {
   const slideNumber = existingSlideCount + i + 1;
   const question = questions[i];
-  const correctAnswer = question.correctAnswer !== undefined ? question.correctAnswer : false;
-  const duration = question.duration || options.defaultDuration || 30;
+  const duration = options.ombeaConfig?.pollTimeLimit || options.defaultDuration || 30;
   const questionIndex = i + 1;
   
   const downloadedImage = downloadedImages.get(slideNumber);
@@ -1628,6 +1648,7 @@ for (let i = 0; i < questions.length; i++) {
   // 1. Créer le XML de la slide OMBEA
   const slideXml = createSlideXml(
     question.question,
+    question.options,
     slideNumber,
     duration,
     hasImage ? downloadedImage.dimensions : undefined,
@@ -1658,14 +1679,23 @@ for (let i = 0; i < questions.length; i++) {
   outputZip.file(`ppt/slides/_rels/slide${slideNumber}.xml.rels`, slideRelsXml);
 
   // 3. Créer les fichiers tags
-  const tags = createSlideTagFiles(questionIndex, correctAnswer, duration, options.ombeaConfig);
+  const tags = createSlideTagFiles(
+    questionIndex, 
+    question.options, 
+    question.correctAnswerIndex, 
+    duration, 
+    options.ombeaConfig
+  );
   tags.forEach(tag => {
     outputZip.file(`ppt/tags/${tag.fileName}`, tag.content);
     totalTagsCreated = Math.max(totalTagsCreated, tag.tagNumber);
   });
 
   const imageStatus = hasImage ? ' (avec image cloud)' : '';
-  console.log(`Slide OMBEA ${slideNumber} créée${imageStatus}: ${question.question.substring(0, 50)}...`);
+  const optionsInfo = question.correctAnswerIndex !== undefined 
+  ? ` (${question.options.length} options, réponse: ${question.correctAnswerIndex + 1})` 
+  : ` (${question.options.length} options, sondage)`;
+console.log(`Slide OMBEA ${slideNumber} créée${imageStatus}${optionsInfo}: ${question.question.substring(0, 50)}...`);
 }
 
 console.log(`Total des tags créés: ${totalTagsCreated}`);

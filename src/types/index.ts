@@ -1,7 +1,7 @@
 export interface Question {
   question: string;
-  correctAnswer: boolean;
-  duration?: number;
+  options: string[];  // Liste des options (1 à 10)
+  correctAnswerIndex?: number;  // Index de la bonne réponse (0-based), undefined si pas de bonne réponse
   imageUrl?: string;
 }
 
